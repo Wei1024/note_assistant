@@ -1,0 +1,8 @@
+ollama
+litellm
+agentops
+openai
+openai-agents  # OpenAI Agents SDK
+python-dotenv
+requests
+pydantic

@@ -1,0 +1,15 @@
+# FastAPI Backend
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+pyyaml
+httpx
+
+# LangGraph for agent framework
+langchain-core>=0.3.76
+langchain-ollama>=0.3.8
+langgraph>=0.6.8
+
+# Optional: Graph visualization (dev only)
+grandalf
