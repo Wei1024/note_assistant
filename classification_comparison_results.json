@@ -1,0 +1,568 @@
+{
+  "direct_llm": [
+    {
+      "scenario": "Technical bug report",
+      "score": 3,
+      "max_score": 4,
+      "percentage": 75.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2717 No matching tags. Got: {'error handling', 'input sanitization', 'authentication'}, Expected: {'production', 'bug', 'backend', 'auth'}",
+        "\u2713 Title: Login fails with special chars in password"
+      ],
+      "result": {
+        "title": "Login fails with special chars in password",
+        "folder": "projects",
+        "tags": [
+          "authentication",
+          "input sanitization",
+          "error handling"
+        ],
+        "first_sentence": "Login endpoint returns 500 error when password contains special characters, requiring investigation into auth service input sanitization."
+      },
+      "time": 3.1542379580205306
+    },
+    {
+      "scenario": "Meeting notes with action items",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: people)",
+        "\u2713 Tags matched: {'design', 'dashboard'}",
+        "\u2713 Title: Dashboard Mockup Review"
+      ],
+      "result": {
+        "title": "Dashboard Mockup Review",
+        "folder": "projects",
+        "tags": [
+          "dashboard",
+          "figma",
+          "api",
+          "design"
+        ],
+        "first_sentence": "Met with Sarah to discuss new dashboard mockups and review API endpoints for data requirements."
+      },
+      "time": 2.551322874962352
+    },
+    {
+      "scenario": "Research article summary",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: research",
+        "\u2713 Tags matched: {'performance'}",
+        "\u2713 Title: HNSW vs IVF-PQ Performance"
+      ],
+      "result": {
+        "title": "HNSW vs IVF-PQ Performance",
+        "folder": "research",
+        "tags": [
+          "vector databases",
+          "similarity search",
+          "recall",
+          "performance"
+        ],
+        "first_sentence": "A paper compares HNSW and IVF-PQ vector database methods, showing HNSW achieves better recall at high speed."
+      },
+      "time": 3.1053822499816306
+    },
+    {
+      "scenario": "Personal reflection",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: journal)",
+        "\u2713 Tags matched: {'workload'}",
+        "\u2713 Title: Workload overwhelm and delegation"
+      ],
+      "result": {
+        "title": "Workload overwhelm and delegation",
+        "folder": "projects",
+        "tags": [
+          "workload",
+          "prioritization",
+          "delegation"
+        ],
+        "first_sentence": "Feeling overwhelmed with current workload and considering delegating the monitoring dashboard task."
+      },
+      "time": 2.4882692910032347
+    },
+    {
+      "scenario": "Quick task reminder",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2713 Tags matched: {'staging'}",
+        "\u2713 Title: Deploy staging before demo"
+      ],
+      "result": {
+        "title": "Deploy staging before demo",
+        "folder": "projects",
+        "tags": [
+          "deployment",
+          "staging",
+          "demo",
+          "environment"
+        ],
+        "first_sentence": "Deploy the staging environment before tomorrow's demo."
+      },
+      "time": 2.129108458990231
+    },
+    {
+      "scenario": "Ambiguous note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: people (expected: inbox)",
+        "\u2713 Tags matched: {'john'}",
+        "\u2713 Title: Check on John's mention"
+      ],
+      "result": {
+        "title": "Check on John's mention",
+        "folder": "people",
+        "tags": [
+          "john",
+          "check",
+          "mention",
+          "follow-up"
+        ],
+        "first_sentence": "I need to follow up on what John mentioned earlier."
+      },
+      "time": 2.308086499979254
+    },
+    {
+      "scenario": "Code implementation idea",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2713 Tags matched: {'redis'}",
+        "\u2713 Title: Refactor notification service"
+      ],
+      "result": {
+        "title": "Refactor notification service",
+        "folder": "projects",
+        "tags": [
+          "redis",
+          "pubsub",
+          "realtime",
+          "benchmark"
+        ],
+        "first_sentence": "Refactoring notification service to use Redis pub/sub would reduce database load and improve real-time updates, but requires initial benchmarking."
+      },
+      "time": 2.8085358339594677
+    },
+    {
+      "scenario": "Learning note",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: research",
+        "\u2713 Tags matched: {'postgres'}",
+        "\u2713 Title: Postgres EXPLAIN ANALYZE insights"
+      ],
+      "result": {
+        "title": "Postgres EXPLAIN ANALYZE insights",
+        "folder": "research",
+        "tags": [
+          "postgres",
+          "query",
+          "execution",
+          "buffers",
+          "analysis"
+        ],
+        "first_sentence": "Postgres EXPLAIN ANALYZE reveals actual execution time and buffer cache performance."
+      },
+      "time": 2.825585416983813
+    },
+    {
+      "scenario": "Conversation recap",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: people",
+        "\u2713 Tags matched: {'devops'}",
+        "\u2713 Title: ArgoCD recommendation from DevOps"
+      ],
+      "result": {
+        "title": "ArgoCD recommendation from DevOps",
+        "folder": "people",
+        "tags": [
+          "argo",
+          "devops",
+          "gitops",
+          "migration",
+          "jenkins"
+        ],
+        "first_sentence": "Mike from DevOps recommended switching to ArgoCD for deployments."
+      },
+      "time": 3.0560285830288194
+    },
+    {
+      "scenario": "Product idea",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: inbox (expected: projects)",
+        "\u2713 Tags matched: {'feature', 'backend', 'export'}",
+        "\u2713 Title: Bulk export feature request"
+      ],
+      "result": {
+        "title": "Bulk export feature request",
+        "folder": "inbox",
+        "tags": [
+          "export",
+          "csv",
+          "feature",
+          "support",
+          "backend"
+        ],
+        "first_sentence": "Users request bulk export via CSV/JSON in settings."
+      },
+      "time": 2.564015334006399
+    },
+    {
+      "scenario": "Multi-topic note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: people)",
+        "\u2713 Tags matched: {'standup'}",
+        "\u2713 Title: Team standup and updates"
+      ],
+      "result": {
+        "title": "Team standup and updates",
+        "folder": "projects",
+        "tags": [
+          "standup",
+          "debug",
+          "oauth",
+          "roadmap"
+        ],
+        "first_sentence": "Lisa completed payment integration; Tom needs help with OAuth flow."
+      },
+      "time": 2.7623917919700034
+    },
+    {
+      "scenario": "Very short note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: inbox (expected: journal)",
+        "\u2713 Tags matched: {'baseball'}",
+        "\u2713 Title: Baseball game tonight"
+      ],
+      "result": {
+        "title": "Baseball game tonight",
+        "folder": "inbox",
+        "tags": [
+          "baseball",
+          "game",
+          "night",
+          "7pm"
+        ],
+        "first_sentence": "I have a baseball game tonight at 7pm."
+      },
+      "time": 2.478534249996301
+    }
+  ],
+  "react_agent": [
+    {
+      "scenario": "Technical bug report",
+      "score": 3,
+      "max_score": 4,
+      "percentage": 75.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2717 No matching tags. Got: {'error handling', 'input sanitization', 'authentication', 'security'}, Expected: {'production', 'bug', 'backend', 'auth'}",
+        "\u2713 Title: Login fails with special chars"
+      ],
+      "result": {
+        "title": "Login fails with special chars",
+        "folder": "projects",
+        "tags": [
+          "authentication",
+          "input sanitization",
+          "error handling",
+          "security"
+        ],
+        "first_sentence": "Login endpoint returns 500 error when password contains special characters, indicating a flaw in input sanitization."
+      },
+      "time": 9.432382332975976
+    },
+    {
+      "scenario": "Meeting notes with action items",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: people)",
+        "\u2713 Tags matched: {'dashboard'}",
+        "\u2713 Title: Dashboard Mockup Review"
+      ],
+      "result": {
+        "title": "Dashboard Mockup Review",
+        "folder": "projects",
+        "tags": [
+          "dashboard",
+          "figma",
+          "api",
+          "review"
+        ],
+        "first_sentence": "Met with Sarah to discuss new dashboard mockups and review API endpoints for data requirements."
+      },
+      "time": 8.060186707996763
+    },
+    {
+      "scenario": "Research article summary",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: research",
+        "\u2713 Tags matched: {'performance'}",
+        "\u2713 Title: HNSW vs IVF-PQ Performance"
+      ],
+      "result": {
+        "title": "HNSW vs IVF-PQ Performance",
+        "folder": "research",
+        "tags": [
+          "vector databases",
+          "similarity search",
+          "recall",
+          "performance"
+        ],
+        "first_sentence": "A paper compares HNSW and IVF-PQ vector database methods, showing HNSW achieves better recall at high speed."
+      },
+      "time": 10.204735042003449
+    },
+    {
+      "scenario": "Personal reflection",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: journal)",
+        "\u2713 Tags matched: {'workload'}",
+        "\u2713 Title: Workload overwhelm and delegation"
+      ],
+      "result": {
+        "title": "Workload overwhelm and delegation",
+        "folder": "projects",
+        "tags": [
+          "workload",
+          "prioritization",
+          "delegation"
+        ],
+        "first_sentence": "Feeling overwhelmed with current workload and considering delegating the monitoring dashboard task."
+      },
+      "time": 7.335232749988791
+    },
+    {
+      "scenario": "Quick task reminder",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2713 Tags matched: {'staging'}",
+        "\u2713 Title: Deploy staging before demo"
+      ],
+      "result": {
+        "title": "Deploy staging before demo",
+        "folder": "projects",
+        "tags": [
+          "deployment",
+          "staging",
+          "demo",
+          "environment"
+        ],
+        "first_sentence": "Deploy the staging environment before tomorrow's demo."
+      },
+      "time": 6.051038875011727
+    },
+    {
+      "scenario": "Ambiguous note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: people (expected: inbox)",
+        "\u2713 Tags matched: {'john'}",
+        "\u2713 Title: Check on John's mention"
+      ],
+      "result": {
+        "title": "Check on John's mention",
+        "folder": "people",
+        "tags": [
+          "john",
+          "check",
+          "mention",
+          "follow-up"
+        ],
+        "first_sentence": "I need to verify what John referred to earlier."
+      },
+      "time": 6.219745124981273
+    },
+    {
+      "scenario": "Code implementation idea",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2713 Tags matched: {'redis', 'refactor'}",
+        "\u2713 Title: Refactor notification service"
+      ],
+      "result": {
+        "title": "Refactor notification service",
+        "folder": "projects",
+        "tags": [
+          "refactor",
+          "redis",
+          "pubsub",
+          "realtime",
+          "benchmark"
+        ],
+        "first_sentence": "Could refactor notification service to use Redis pub/sub for real-time updates, reducing database load and improving responsiveness."
+      },
+      "time": 9.211708249989897
+    },
+    {
+      "scenario": "Learning note",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: research",
+        "\u2713 Tags matched: {'postgres'}",
+        "\u2713 Title: Postgres EXPLAIN ANALYZE insights"
+      ],
+      "result": {
+        "title": "Postgres EXPLAIN ANALYZE insights",
+        "folder": "research",
+        "tags": [
+          "postgres",
+          "query",
+          "performance",
+          "buffers",
+          "explain"
+        ],
+        "first_sentence": "Postgres EXPLAIN ANALYZE reveals actual execution time and buffer cache hits."
+      },
+      "time": 9.876206165994518
+    },
+    {
+      "scenario": "Conversation recap",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: people",
+        "\u2713 Tags matched: {'devops'}",
+        "\u2713 Title: ArgoCD recommendation from DevOps"
+      ],
+      "result": {
+        "title": "ArgoCD recommendation from DevOps",
+        "folder": "people",
+        "tags": [
+          "argo",
+          "devops",
+          "gitops",
+          "migration",
+          "jenkins"
+        ],
+        "first_sentence": "Mike from DevOps recommended switching to ArgoCD for better GitOps integration."
+      },
+      "time": 10.03385474998504
+    },
+    {
+      "scenario": "Product idea",
+      "score": 4,
+      "max_score": 4,
+      "percentage": 100.0,
+      "feedback": [
+        "\u2713 Folder: projects",
+        "\u2713 Tags matched: {'backend'}",
+        "\u2713 Title: Add bulk export to settings"
+      ],
+      "result": {
+        "title": "Add bulk export to settings",
+        "folder": "projects",
+        "tags": [
+          "bulk export",
+          "csv",
+          "json",
+          "settings",
+          "backend"
+        ],
+        "first_sentence": "Users request bulk export; can add CSV/JSON export in settings with existing backend data."
+      },
+      "time": 11.009610540990252
+    },
+    {
+      "scenario": "Multi-topic note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: projects (expected: people)",
+        "\u2713 Tags matched: {'standup'}",
+        "\u2713 Title: Team standup and updates"
+      ],
+      "result": {
+        "title": "Team standup and updates",
+        "folder": "projects",
+        "tags": [
+          "standup",
+          "debug",
+          "oauth",
+          "roadmap"
+        ],
+        "first_sentence": "Team standup updates include payment integration completion and OAuth debugging needed."
+      },
+      "time": 9.761261250008829
+    },
+    {
+      "scenario": "Very short note",
+      "score": 2,
+      "max_score": 4,
+      "percentage": 50.0,
+      "feedback": [
+        "\u2717 Folder: inbox (expected: journal)",
+        "\u2713 Tags matched: {'baseball'}",
+        "\u2713 Title: Baseball game tonight"
+      ],
+      "result": {
+        "title": "Baseball game tonight",
+        "folder": "inbox",
+        "tags": [
+          "baseball",
+          "game",
+          "night",
+          "7pm"
+        ],
+        "first_sentence": "I have a baseball game tonight at 7pm."
+      },
+      "time": 7.023826959019061
+    }
+  ],
+  "summary": {
+    "direct_avg_score": 2.9166666666666665,
+    "direct_avg_time": 2.6859582119068364,
+    "react_avg_score": 3.0833333333333335,
+    "react_avg_time": 8.684982395745465
+  }
+}
