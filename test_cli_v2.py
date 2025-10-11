@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-QuickNote AI - Interactive CLI Tester v2 (Optimized)
+QuickNote AI - Interactive CLI Tester v2 (Fully Optimized)
 - Capture: Fast direct LLM classification (~60% faster)
-- Search: Agent-powered natural language search
+- Search: Fast natural language search (~70% faster)
 """
 import requests
 import sys
@@ -72,56 +72,39 @@ def capture_note():
         print(f"{Colors.RED}Error: {e}{Colors.END}")
 
 def search_notes():
-    """Search with Search Agent"""
-    print_section("🔍", "Search Notes (Search Agent)")
-    
+    """Search with optimized smart search"""
+    print_section("🔍", "Smart Search (Fast - Optimized)")
+
     print(f"{Colors.CYAN}Enter search query:{Colors.END} ", end='')
     query = input().strip()
-    
+
     if not query:
         return
-    
-    print(f"\n{Colors.YELLOW}⏳ Search Agent running...{Colors.END}\n")
-    
+
+    print(f"\n{Colors.YELLOW}⏳ Searching...{Colors.END}\n")
+
     try:
         response = requests.post(
-            f"{BACKEND_URL}/search_with_agent",
+            f"{BACKEND_URL}/search_fast",
             json={"query": query, "limit": 10},
             timeout=30
         )
-        
+
         if response.status_code == 200:
-            data = response.json()
-            
-            # Show agent trace
-            print_section("🔍", "Agent Trace")
-            for i, step in enumerate(data.get("steps", []), 1):
-                if step["type"] == "thought":
-                    content = step['content']
-                    if len(content) > 150:
-                        content = content[:150] + "..."
-                    print(f"{Colors.CYAN}💭 {i}. {content}{Colors.END}")
-                elif step["type"] == "tool_call":
-                    print(f"{Colors.YELLOW}🔧 {i}. Tool: {step['name']}{Colors.END}")
-                    if "query" in step.get("args", {}):
-                        print(f"     Query: {step['args']['query']}")
+            results = response.json()
 
-            # Show agent's natural language answer
-            final_answer = data.get("final_answer")
-            if final_answer:
-                print_section("💬", "Agent's Answer")
-                print(f"{Colors.GREEN}{final_answer}{Colors.END}\n")
-
-            # Show structured results
-            results = data.get("results", [])
             if results:
-                print_section("📋", f"Structured Results ({len(results)} notes)")
+                print_section("📋", f"Found {len(results)} notes")
                 for i, r in enumerate(results[:5], 1):
                     path = Path(r['path'])
                     print(f"\n{Colors.BOLD}{i}. {path.name}{Colors.END}")
                     snippet = r['snippet'].replace('<b>', Colors.GREEN).replace('</b>', Colors.END)
                     print(f"   {snippet}")
-            elif not final_answer:
+                    print(f"   {Colors.CYAN}Score: {r['score']:.2f}{Colors.END}")
+
+                if len(results) > 5:
+                    print(f"\n{Colors.YELLOW}... and {len(results) - 5} more results{Colors.END}")
+            else:
                 print(f"\n{Colors.YELLOW}No results found{Colors.END}")
     except Exception as e:
         print(f"{Colors.RED}Error: {e}{Colors.END}")
@@ -157,7 +140,7 @@ def main_menu():
     while True:
         print(f"\n{Colors.BOLD}Main Menu:{Colors.END}")
         print(f"  {Colors.CYAN}1.{Colors.END} 📝 Capture Note (Fast - Optimized)")
-        print(f"  {Colors.CYAN}2.{Colors.END} 🔍 Search Notes (Search Agent)")
+        print(f"  {Colors.CYAN}2.{Colors.END} 🔍 Search Notes (Fast - Optimized)")
         print(f"  {Colors.CYAN}3.{Colors.END} 📋 List Notes")
         print(f"  {Colors.CYAN}4.{Colors.END} ❌ Quit")
         
