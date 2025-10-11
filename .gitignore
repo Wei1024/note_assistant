@@ -34,3 +34,14 @@ htmlcov/
 # Uncomment if you want to ignore these:
 # architecture.md
 # plan.md
+
+# Node/Frontend
+node_modules/
+dist/
+*.local
+
+# Tauri/Rust
+app-frontend/src-tauri/target/
+app-frontend/src-tauri/Cargo.lock
+app-frontend/src-tauri/icons/
+app-frontend

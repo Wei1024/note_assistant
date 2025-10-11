@@ -10,7 +10,7 @@ from .fts import index_note
 SLUG_RE = re.compile(r"[^a-z0-9\-]+")
 
 def _iso_now():
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    return datetime.now().astimezone().replace(microsecond=0).isoformat()
 
 def slugify(s: str) -> str:
     s = s.strip().lower()

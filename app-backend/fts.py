@@ -53,9 +53,24 @@ def index_note(note_id: str, title: str, body: str, tags: list,
     con.close()
 
 def search_notes(query: str, limit: int = 20):
-    """Search notes using FTS5"""
+    """Search notes using FTS5
+
+    Supports:
+    - Boolean queries with OR: "sport OR baseball OR game"
+    - Simple terms: "baseball"
+    - Phrases in quotes: '"exact phrase"'
+    """
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
+
+    # If query contains OR, AND, or is already quoted, use it as-is
+    # Otherwise, wrap in quotes to handle special chars like apostrophes
+    if ' OR ' in query or ' AND ' in query or query.startswith('"'):
+        fts_query = query
+    else:
+        # Escape quotes and wrap as phrase for safety
+        escaped_query = query.replace('"', '""')
+        fts_query = f'"{escaped_query}"'
 
     cur.execute("""
         SELECT n.path,
@@ -66,7 +81,7 @@ def search_notes(query: str, limit: int = 20):
         WHERE notes_fts MATCH ?
         ORDER BY score
         LIMIT ?
-    """, (query, limit))
+    """, (fts_query, limit))
 
     results = [
         {"path": row[0], "snippet": row[1], "score": row[2]}
