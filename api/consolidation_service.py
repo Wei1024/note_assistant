@@ -208,29 +208,36 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
     for tag in tags[:3]:  # Top 3 tags
         tag_results = search_notes(tag, limit=2)
         for result in tag_results:
-            result_id = result.get("id")
             result_path = result.get("path")
 
-            # Skip self and today's notes
-            if result_id == note["id"]:
-                continue
-
-            if exclude_today:
-                # Check if result is from today
-                try:
-                    cur.execute("SELECT created FROM notes_meta WHERE id = ?", (result_id,))
-                    row = cur.fetchone()
-                    if row and row[0] >= today_start:
-                        continue
-                except Exception:
+            # Lookup note ID from path
+            try:
+                cur.execute("SELECT id, created FROM notes_meta WHERE path = ?", (result_path,))
+                row = cur.fetchone()
+                if not row:
                     continue
 
-            if result_id not in candidates:
-                candidates[result_id] = {
-                    "id": result_id,
-                    "path": result_path,
-                    "match_reason": f"shares tag: {tag}"
-                }
+                result_id, result_created = row
+
+                # Skip self
+                if result_id == note["id"]:
+                    continue
+
+                # Skip today's notes if exclude_today
+                if exclude_today and result_created >= today_start:
+                    continue
+
+                # Add to candidates
+                if result_id not in candidates:
+                    candidates[result_id] = {
+                        "id": result_id,
+                        "path": result_path,
+                        "match_reason": f"shares tag: {tag}"
+                    }
+
+            except Exception as e:
+                # Skip on error
+                continue
 
     con.close()
 
