@@ -218,3 +218,78 @@ def update_note_status(note_path: str, new_status: str) -> bool:
     except Exception as e:
         print(f"Error updating note status: {e}")
         return False
+
+
+def get_notes_created_today():
+    """Get all notes created today with their enrichment metadata.
+
+    Returns:
+        List of dicts with keys: id, path, folder, body, entities, dimensions
+    """
+    import sqlite3
+    from .config import DB_PATH
+    from datetime import datetime
+
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
+
+    # Calculate today's start in ISO format
+    today = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = today.isoformat()
+
+    # Get today's notes
+    cur.execute(
+        """SELECT id, path, folder, created
+           FROM notes_meta
+           WHERE created >= ?
+           ORDER BY created""",
+        (today_start,)
+    )
+
+    notes = []
+    for row in cur.fetchall():
+        note_id, path, folder, created = row
+
+        # Read note body from file
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Extract body (after frontmatter)
+                if content.startswith('---'):
+                    parts = content.split('---', 2)
+                    body = parts[2].strip() if len(parts) >= 3 else content
+                else:
+                    body = content
+        except Exception as e:
+            print(f"Error reading {path}: {e}")
+            body = ""
+
+        # Get entities for this note
+        cur.execute(
+            """SELECT entity_type, entity_value
+               FROM notes_entities
+               WHERE note_id = ?""",
+            (note_id,)
+        )
+        entities = cur.fetchall()
+
+        # Get dimensions for this note
+        cur.execute(
+            """SELECT dimension_type, dimension_value
+               FROM notes_dimensions
+               WHERE note_id = ?""",
+            (note_id,)
+        )
+        dimensions = cur.fetchall()
+
+        notes.append({
+            "id": note_id,
+            "path": path,
+            "folder": folder,
+            "body": body,
+            "entities": entities,
+            "dimensions": dimensions
+        })
+
+    con.close()
+    return notes

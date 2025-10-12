@@ -12,6 +12,7 @@ from typing import List, Dict, Optional
 from .config import DB_PATH
 from .capture_service import get_llm
 from .graph import add_link
+from .notes import get_notes_created_today
 
 
 def _iso_now():
@@ -123,75 +124,6 @@ def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: s
     }
 
     return overlap
-
-
-def get_notes_created_today() -> List[Dict]:
-    """Get all notes created today with their enrichment metadata.
-
-    Returns:
-        List of dicts with keys: id, path, folder, body, entities, dimensions
-    """
-    con = sqlite3.connect(DB_PATH)
-    cur = con.cursor()
-
-    today_start = _iso_today_start()
-
-    # Get today's notes
-    cur.execute(
-        """SELECT id, path, folder, created
-           FROM notes_meta
-           WHERE created >= ?
-           ORDER BY created""",
-        (today_start,)
-    )
-
-    notes = []
-    for row in cur.fetchall():
-        note_id, path, folder, created = row
-
-        # Read note body from file
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Extract body (after frontmatter)
-                if content.startswith('---'):
-                    parts = content.split('---', 2)
-                    body = parts[2].strip() if len(parts) >= 3 else content
-                else:
-                    body = content
-        except Exception as e:
-            print(f"Error reading {path}: {e}")
-            body = ""
-
-        # Get entities for this note
-        cur.execute(
-            """SELECT entity_type, entity_value
-               FROM notes_entities
-               WHERE note_id = ?""",
-            (note_id,)
-        )
-        entities = cur.fetchall()
-
-        # Get dimensions for this note
-        cur.execute(
-            """SELECT dimension_type, dimension_value
-               FROM notes_dimensions
-               WHERE note_id = ?""",
-            (note_id,)
-        )
-        dimensions = cur.fetchall()
-
-        notes.append({
-            "id": note_id,
-            "path": path,
-            "folder": folder,
-            "body": body,
-            "entities": entities,
-            "dimensions": dimensions
-        })
-
-    con.close()
-    return notes
 
 
 def find_link_candidates(note: Dict, max_candidates: int = 10,
@@ -508,17 +440,110 @@ JSON:"""
         return []
 
 
-async def consolidate_daily_notes() -> Dict:
-    """Consolidate today's notes - find and create links to existing knowledge.
+async def consolidate_note(note_id: str) -> Dict:
+    """Consolidate a single note - find and create links to existing knowledge.
 
-    This is the main entry point for memory consolidation, mimicking the brain's
-    process of connecting new memories to existing knowledge during sleep.
+    Core function that processes one note at a time. This allows flexible scheduling:
+    - Run after each note is created (continuous)
+    - Run every N minutes on recent notes (periodic)
+    - Run once at end of day on all notes (batch)
+
+    Args:
+        note_id: ID of note to consolidate
 
     Returns:
-        Dict with consolidation statistics
+        Dict with consolidation statistics for this note
     """
-    notes = get_notes_created_today()
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
 
+    # Get note data
+    cur.execute("""
+        SELECT id, path, created
+        FROM notes_meta
+        WHERE id = ?
+    """, (note_id,))
+    row = cur.fetchone()
+
+    if not row:
+        con.close()
+        return {"error": "Note not found", "note_id": note_id}
+
+    note_id, path, created = row
+
+    # Read note body from file
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Extract body (after frontmatter)
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                body = parts[2].strip() if len(parts) >= 3 else content
+            else:
+                body = content
+    except Exception as e:
+        con.close()
+        return {"error": f"Could not read note file: {e}", "note_id": note_id}
+
+    # Get entities and dimensions
+    cur.execute("SELECT entity_type, entity_value FROM notes_entities WHERE note_id = ?", (note_id,))
+    entities = cur.fetchall()
+
+    cur.execute("SELECT dimension_type, dimension_value FROM notes_dimensions WHERE note_id = ?", (note_id,))
+    dimensions = cur.fetchall()
+
+    con.close()
+
+    note = {
+        "id": note_id,
+        "path": path,
+        "body": body,
+        "created": created,
+        "entities": entities,
+        "dimensions": dimensions
+    }
+
+    # Find candidates
+    candidates = find_link_candidates(note, max_candidates=10, exclude_today=False)
+
+    if not candidates:
+        return {
+            "note_id": note_id,
+            "links_created": 0,
+            "candidates_found": 0
+        }
+
+    # Suggest links using LLM
+    suggested_links = await suggest_links_batch(note["body"], candidates)
+
+    # Store links in database
+    links_added = 0
+    for link in suggested_links:
+        try:
+            add_link(note["id"], link["id"], link["link_type"])
+            links_added += 1
+        except Exception as e:
+            print(f"Error storing link from {note['id']} to {link['id']}: {e}")
+
+    return {
+        "note_id": note_id,
+        "links_created": links_added,
+        "candidates_found": len(candidates)
+    }
+
+
+async def consolidate_notes(note_ids: List[str]) -> Dict:
+    """Batch consolidate a list of notes sequentially.
+
+    Generic batch processor - processes notes one at a time in sequence.
+    Each note can link to any older note (including earlier in the batch).
+
+    Args:
+        note_ids: List of note IDs to consolidate
+
+    Returns:
+        Dict with aggregated consolidation statistics
+    """
     stats = {
         "notes_processed": 0,
         "links_created": 0,
@@ -526,32 +551,25 @@ async def consolidate_daily_notes() -> Dict:
         "started_at": _iso_now()
     }
 
-    for note in notes:
-        # Find candidates
-        candidates = find_link_candidates(note, max_candidates=10, exclude_today=True)
-
-        if not candidates:
-            stats["notes_processed"] += 1
-            continue
-
-        # Suggest links using batch LLM call
-        suggested_links = await suggest_links_batch(note["body"], candidates)
-
-        # Store links in database
-        links_added = 0
-        for link in suggested_links:
-            try:
-                add_link(note["id"], link["id"], link["link_type"])
-                links_added += 1
-            except Exception as e:
-                print(f"Error storing link from {note['id']} to {link['id']}: {e}")
-
-        if links_added > 0:
-            stats["notes_with_links"] += 1
-            stats["links_created"] += links_added
+    for note_id in note_ids:
+        result = await consolidate_note(note_id)
 
         stats["notes_processed"] += 1
+        if result.get("links_created", 0) > 0:
+            stats["notes_with_links"] += 1
+            stats["links_created"] += result["links_created"]
 
     stats["completed_at"] = _iso_now()
 
     return stats
+
+
+async def consolidate_daily_notes() -> Dict:
+    """Convenience wrapper to consolidate all of today's notes.
+
+    Returns:
+        Dict with aggregated consolidation statistics
+    """
+    notes = get_notes_created_today()
+    note_ids = [note["id"] for note in notes]
+    return await consolidate_notes(note_ids)

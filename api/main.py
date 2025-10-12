@@ -10,7 +10,7 @@ from .notes import write_markdown, update_note_status
 from .fts import ensure_db, search_notes
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
 from .enrichment_service import enrich_note_metadata, store_enrichment_metadata
-from .consolidation_service import consolidate_daily_notes
+from .consolidation_service import consolidate_daily_notes, consolidate_note
 import sqlite3
 
 @asynccontextmanager
@@ -182,18 +182,29 @@ async def update_status(req: UpdateStatusRequest):
     else:
         raise HTTPException(status_code=404, detail="Note not found or update failed")
 
+@app.post("/consolidate/{note_id}")
+async def consolidate_single_note(note_id: str):
+    """Consolidate a single note - find and create links to existing knowledge.
+
+    Args:
+        note_id: ID of note to consolidate
+
+    Returns:
+        {
+            "note_id": "2025-10-12T15:32:09-07:00_e189",
+            "links_created": 2,
+            "candidates_found": 5
+        }
+    """
+    result = await consolidate_note(note_id)
+    return result
+
+
 @app.post("/consolidate")
-async def consolidate():
-    """Memory consolidation - link today's notes to existing knowledge.
+async def consolidate_batch():
+    """Batch consolidate all of today's notes.
 
-    Mimics the brain's memory consolidation process during sleep.
-    Analyzes today's notes and creates meaningful links to established knowledge.
-
-    This is an async background operation that:
-    1. Finds today's notes
-    2. Searches for related existing notes (by people, topics, projects)
-    3. Uses LLM to analyze connections in batch
-    4. Creates links in the graph database
+    Processes notes sequentially - each can link to earlier notes in the batch.
 
     Returns:
         {
