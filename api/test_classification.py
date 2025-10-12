@@ -9,7 +9,8 @@ from typing import Dict
 
 from langchain_ollama import ChatOllama
 from langgraph.prebuilt import create_react_agent
-from .capture_agent import classify_note, create_classification_agent
+from .capture_service import classify_note
+from .future_agent import create_classification_agent
 from .config import LLM_MODEL, LLM_BASE_URL, LLM_TEMPERATURE
 
 

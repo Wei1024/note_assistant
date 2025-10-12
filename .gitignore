@@ -45,3 +45,5 @@ app-frontend/src-tauri/target/
 app-frontend/src-tauri/Cargo.lock
 app-frontend/src-tauri/icons/
 app-frontend
+
+next_step_by_claude.md

@@ -1,6 +1,6 @@
 """
-LangGraph-based note classification using local LLM
-Replaces the old llm.py httpx-based implementation
+Note Classification Service
+Direct LLM-based classification (no agent overhead for fast performance)
 """
 import json
 import httpx
@@ -43,8 +43,8 @@ def get_llm():
 def classify_note(raw_text: str) -> dict:
     """Classify a note into title, folder, and tags using local LLM.
 
-    NOTE: This is the synchronous version for use with LangGraph tools.
-    Use classify_note_async() for async FastAPI endpoints.
+    NOTE: This synchronous version is kept for future agent integration.
+    For production FastAPI endpoints, use classify_note_async() instead.
 
     Args:
         raw_text: The raw note content to classify
@@ -165,13 +165,3 @@ JSON:"""
             "first_sentence": raw_text.split("\n")[0],
             "error": str(e)
         }
-
-
-# Optional: LangGraph ReAct agent wrapper (for future enhancements)
-def create_classification_agent():
-    """Create a LangGraph agent for classification (alternative approach)"""
-    from langgraph.prebuilt import create_react_agent
-
-    llm = get_llm()  # Use singleton instance
-    agent = create_react_agent(llm, tools=[classify_note])
-    return agent
