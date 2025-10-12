@@ -8,7 +8,9 @@ from .capture_service import classify_note_async
 from .search_service import search_notes_smart
 from .notes import write_markdown, update_note_status
 from .fts import ensure_db, search_notes
-from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL
+from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
+from .enrichment_service import enrich_note_metadata, store_enrichment_metadata
+import sqlite3
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,12 +41,21 @@ async def health():
 
 @app.post("/classify_and_save", response_model=ClassifyResponse)
 async def classify_and_save(req: ClassifyRequest):
-    """Classify note using direct LLM (fast path) and save to disk"""
+    """Classify note using direct LLM (fast path), enrich with metadata, and save to disk"""
     try:
-        # Async LLM classification for better concurrency
+        # Step 1: Primary classification
         result = await classify_note_async(req.text)
 
-        # Save to disk
+        # Step 2: Enrich with multi-dimensional metadata
+        enrichment = None
+        try:
+            enrichment = await enrich_note_metadata(req.text, result)
+        except Exception as enrich_error:
+            # Don't fail if enrichment fails, just log it
+            print(f"Enrichment failed: {enrich_error}")
+            enrichment = {}
+
+        # Step 3: Save to disk with enrichment in frontmatter
         note_id, filepath, title, folder = write_markdown(
             title=result["title"],
             folder=result["folder"],
@@ -52,8 +63,19 @@ async def classify_and_save(req: ClassifyRequest):
             body=req.text,
             status=result.get("status"),
             needs_review=result.get("needs_review", False),
-            reasoning=result.get("reasoning")
+            reasoning=result.get("reasoning"),
+            enrichment=enrichment  # Phase 1.3: Pass enrichment to frontmatter
         )
+
+        # Step 4: Store enrichment metadata in database
+        if enrichment:
+            try:
+                con = sqlite3.connect(DB_PATH)
+                store_enrichment_metadata(note_id, enrichment, con)
+                con.close()
+            except Exception as db_error:
+                # Don't fail the whole request if DB storage fails
+                print(f"Failed to store enrichment in DB for note {note_id}: {db_error}")
 
         return ClassifyResponse(
             title=title,

@@ -25,9 +25,32 @@ def pick_filename(title: str, created_iso: str) -> str:
     return f"{ymd}-{slug}.md"
 
 def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=None, status=None,
-                   needs_review=False, reasoning=None):
-    """Write note to disk and index in SQLite"""
+                   needs_review=False, reasoning=None, enrichment=None):
+    """Write note to disk and index in SQLite with optional multi-dimensional metadata.
+
+    Args:
+        folder: Primary folder (tasks/meetings/ideas/reference/journal)
+        title: Note title
+        tags: List of tags
+        body: Note content
+        related_ids: List of related note IDs
+        status: Optional status (only for tasks folder)
+        needs_review: Whether note needs review
+        reasoning: Review reasoning
+        enrichment: Optional dict from enrich_note_metadata() with:
+            - secondary_contexts: List[str]
+            - people: List[dict]
+            - topics: List[str]
+            - projects: List[str]
+            - technologies: List[str]
+            - emotions: List[str]
+            - time_references: List[dict]
+
+    Returns:
+        Tuple of (note_id, path, title, folder)
+    """
     related_ids = related_ids or []
+    enrichment = enrichment or {}
     created = _iso_now()
     updated = created
     nid = f"{created}_{uuid.uuid4().hex[:4]}"
@@ -60,6 +83,55 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         front["needs_review"] = needs_review
     if reasoning:
         front["review_reason"] = reasoning
+
+    # Add enrichment metadata (Phase 1.3)
+    if enrichment:
+        # Secondary contexts
+        secondary_contexts = enrichment.get("secondary_contexts", [])
+        if secondary_contexts:
+            front["dimensions"] = [
+                {"type": "context", "value": ctx}
+                for ctx in secondary_contexts
+            ]
+
+        # Emotions
+        emotions = enrichment.get("emotions", [])
+        if emotions:
+            if "dimensions" not in front:
+                front["dimensions"] = []
+            front["dimensions"].extend([
+                {"type": "emotion", "value": emotion}
+                for emotion in emotions
+            ])
+
+        # Entities
+        entities = {}
+        people = enrichment.get("people", [])
+        if people:
+            entities["people"] = [
+                p.get("name") if isinstance(p, dict) else p
+                for p in people
+            ]
+
+        topics = enrichment.get("topics", [])
+        if topics:
+            entities["topics"] = topics
+
+        projects = enrichment.get("projects", [])
+        if projects:
+            entities["projects"] = projects
+
+        technologies = enrichment.get("technologies", [])
+        if technologies:
+            entities["technologies"] = technologies
+
+        if entities:
+            front["entities"] = entities
+
+        # Time references
+        time_refs = enrichment.get("time_references", [])
+        if time_refs:
+            front["time_references"] = time_refs
 
     # Write file
     content = "---\n"
