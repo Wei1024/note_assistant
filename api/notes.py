@@ -24,7 +24,8 @@ def pick_filename(title: str, created_iso: str) -> str:
     slug = slugify(title)[:80]
     return f"{ymd}-{slug}.md"
 
-def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=None, status=None):
+def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=None, status=None,
+                   confidence=None, needs_review=False, reasoning=None):
     """Write note to disk and index in SQLite"""
     related_ids = related_ids or []
     created = _iso_now()
@@ -53,6 +54,14 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
     # Add status if it's a task
     if status:
         front["status"] = status
+
+    # Add classification metadata
+    if confidence is not None:
+        front["confidence"] = confidence
+    if needs_review:
+        front["needs_review"] = needs_review
+    if reasoning:
+        front["reasoning"] = reasoning
 
     # Write file
     content = "---\n"

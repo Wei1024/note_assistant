@@ -20,6 +20,49 @@ LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 # Editor
 OPEN_EDITOR_CMD = os.getenv("OPEN_EDITOR_CMD", "code")
 
+# Folder Structure - Brain-based Cognitive Model
+WORKING_FOLDERS = {
+    "tasks": {
+        "description": "Actionable items - executive function",
+        "has_status": True,
+        "cognitive_context": "working_memory",
+        "auto_archive_days": 7,  # After completion
+    },
+    "meetings": {
+        "description": "Conversations, discussions - social cognition",
+        "has_status": False,
+        "cognitive_context": "working_memory",
+        "auto_archive_days": 30,
+    },
+    "ideas": {
+        "description": "Brainstorms, hypotheses - creative exploration",
+        "has_status": False,
+        "cognitive_context": "working_memory",
+        "auto_archive_days": None,  # Manual, based on outcome
+    },
+    "reference": {
+        "description": "How-tos, evergreen knowledge - procedural memory",
+        "has_status": False,
+        "cognitive_context": "working_memory",
+        "auto_archive_days": 365,  # Rarely archived
+    },
+    "journal": {
+        "description": "Personal reflections - emotional processing",
+        "has_status": False,
+        "cognitive_context": "emotional",
+        "auto_archive_days": 365,
+    }
+}
+
+# Archive (Long-term memory)
+ARCHIVE_FOLDER = "archive"
+
+# Valid folders list (for backward compatibility)
+VALID_FOLDERS = list(WORKING_FOLDERS.keys())
+
+# Classification confidence threshold
+CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.7
+
 # Display config on startup
 print(f"🤖 LLM Model: {LLM_MODEL}")
 print(f"📁 Notes Dir: {NOTES_DIR}")

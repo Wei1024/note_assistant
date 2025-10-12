@@ -6,7 +6,7 @@ import json
 import httpx
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
-from .config import LLM_MODEL, LLM_BASE_URL, LLM_TEMPERATURE
+from .config import LLM_MODEL, LLM_BASE_URL, LLM_TEMPERATURE, VALID_FOLDERS, WORKING_FOLDERS, CLASSIFICATION_CONFIDENCE_THRESHOLD
 
 # HTTP client with connection pooling for Ollama
 _http_client = None
@@ -117,31 +117,58 @@ async def classify_note_async(raw_text: str) -> dict:
     """
     llm = get_llm()  # Use singleton instance
 
-    prompt = f"""You are a note classifier. Analyze this note and return JSON.
+    prompt = f"""You are a note classifier using a brain-based cognitive model. Analyze this note and return JSON.
 
 Note: {raw_text}
 
 Return ONLY valid JSON:
 {{
   "title": "Short descriptive title (max 10 words)",
-  "folder": "inbox|projects|people|research|journal",
+  "folder": "tasks|meetings|ideas|reference|journal",
+  "confidence": 0.0-1.0,
+  "reasoning": "Brief explanation of classification choice",
   "tags": ["tag1", "tag2", "tag3"],
   "first_sentence": "One sentence summary",
   "status": "todo|in_progress|done|null"
 }}
 
-Folder selection guide:
-- projects: Work tasks, technical issues, code
-- people: Meetings, conversations, relationships
-- research: Learning, articles, investigations
-- journal: Personal thoughts, reflections
-- inbox: When unsure
+Folder Selection Guide (Cognitive Contexts):
 
-Status detection guide:
-- "todo": Note describes a task to be done (e.g., "Fix the login bug", "Call Sarah tomorrow", "Deploy to production")
-- "in_progress": Note mentions work currently being done (e.g., "Working on the API", "Currently debugging")
-- "done": Note describes completed work (e.g., "Fixed the bug", "Deployed successfully", "Finished the report")
-- null: Not a task, just information/notes (e.g., "Meeting notes", "Interesting article", "Random thoughts")
+**tasks** (Executive Function - Working Memory)
+- Actionable items with clear completion state
+- ONLY folder that can have status (todo/in_progress/done)
+- Examples: "Fix login bug", "Call Sarah tomorrow", "Deploy to production"
+- If NOT actionable, it's NOT a task!
+
+**meetings** (Social Cognition - Working Memory)
+- Conversations, discussions, standup notes
+- Captures WHO + WHEN + WHAT was discussed
+- Examples: "Met with Sarah about memory research", "Team standup notes", "1-on-1 with manager"
+- NO status field (meetings happened or didn't happen, not todo/done)
+
+**ideas** (Creative Exploration - Working Memory)
+- Brainstorms, hypotheses, "what if" thoughts
+- Exploration mode, not execution mode
+- Examples: "Could we use Redis for caching?", "Product idea: bulk export", "Hypothesis about user behavior"
+- NO status field (ideas are explored, not completed)
+
+**reference** (Procedural Memory - Working Memory)
+- How-tos, learnings, evergreen knowledge
+- Timeless information you'll reference later
+- Examples: "How Postgres EXPLAIN works", "Git rebase tutorial", "Python async patterns"
+- NO status field (knowledge just exists)
+
+**journal** (Emotional Processing - Limbic System)
+- Personal reflections, feelings, thoughts
+- Not task-oriented, just being present
+- Examples: "Feeling overwhelmed today", "Grateful for team support", "Reflecting on career growth"
+- NO status field (emotions aren't tasks)
+
+Classification Rules:
+1. If confidence < 0.7, explain why in reasoning
+2. Focus on PRIMARY intent (what is this note mainly about?)
+3. Status field ONLY valid for "tasks" folder
+4. When uncertain between folders, prefer the most actionable context
 
 Tags should be lowercase, 3-6 relevant keywords.
 
@@ -152,21 +179,40 @@ JSON:"""
         result = json.loads(response.content)
 
         # Validation
-        valid_folders = ["inbox", "projects", "people", "research", "journal"]
-        if result.get("folder") not in valid_folders:
-            result["folder"] = "inbox"
+        folder = result.get("folder")
+        if folder not in VALID_FOLDERS:
+            # Fallback to journal for uncertain classifications
+            folder = "journal"
+            result["folder"] = folder
+            result["confidence"] = 0.5
+            result["reasoning"] = f"Invalid folder '{result.get('folder')}', defaulted to journal"
 
-        # Validate status field
-        valid_statuses = ["todo", "in_progress", "done", None]
+        # Validate status field - ONLY for tasks folder
         status = result.get("status")
-        if status == "null" or status not in valid_statuses:
-            result["status"] = None
+        if status == "null":
+            status = None
+
+        if folder == "tasks":
+            # Validate status for tasks
+            valid_statuses = ["todo", "in_progress", "done", None]
+            if status not in valid_statuses:
+                status = "todo"  # Default to todo for tasks
+        else:
+            # Non-task folders should NOT have status
+            status = None
+
+        result["status"] = status
 
         # Ensure required fields
         result.setdefault("title", raw_text.split("\n")[0][:60])
         result.setdefault("tags", [])
         result.setdefault("first_sentence", raw_text.split("\n")[0])
-        result.setdefault("status", None)
+        result.setdefault("confidence", 0.8)  # Default confidence
+        result.setdefault("reasoning", "")
+
+        # Add review flag for low confidence
+        confidence = float(result.get("confidence", 0.8))
+        result["needs_review"] = confidence < CLASSIFICATION_CONFIDENCE_THRESHOLD
 
         return result
 
@@ -174,9 +220,12 @@ JSON:"""
         # Fallback on error
         return {
             "title": raw_text.split("\n")[0][:60],
-            "folder": "inbox",
+            "folder": "journal",  # Safe fallback
             "tags": [],
             "first_sentence": raw_text.split("\n")[0],
             "status": None,
+            "confidence": 0.3,
+            "reasoning": f"Classification failed: {str(e)}",
+            "needs_review": True,
             "error": str(e)
         }

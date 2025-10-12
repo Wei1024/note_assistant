@@ -50,7 +50,10 @@ async def classify_and_save(req: ClassifyRequest):
             folder=result["folder"],
             tags=result["tags"],
             body=req.text,
-            status=result.get("status")
+            status=result.get("status"),
+            confidence=result.get("confidence"),
+            needs_review=result.get("needs_review", False),
+            reasoning=result.get("reasoning")
         )
 
         return ClassifyResponse(
@@ -62,29 +65,32 @@ async def classify_and_save(req: ClassifyRequest):
         )
 
     except Exception as e:
-        # Fallback to inbox on any error
+        # Fallback to journal on any error
         first_line = req.text.split("\n")[0][:60]
         note_id, filepath, title, folder = write_markdown(
-            folder="inbox",
+            folder="journal",  # Safe fallback instead of inbox
             title=first_line,
             tags=[],
-            body=req.text
+            body=req.text,
+            confidence=0.3,
+            needs_review=True,
+            reasoning=f"Error during classification: {str(e)}"
         )
         return ClassifyResponse(
             title=title,
-            folder="inbox",
+            folder="journal",
             tags=[],
             first_sentence=first_line,
             path=filepath
         )
 
-@app.post("/save_inbox", response_model=ClassifyResponse)
-async def save_inbox(req: ClassifyRequest):
-    """Save directly to inbox without classification"""
+@app.post("/save_journal", response_model=ClassifyResponse)
+async def save_journal(req: ClassifyRequest):
+    """Save directly to journal without classification (replaces save_inbox)"""
     first_line = req.text.split("\n")[0][:60]
 
     note_id, filepath, title, folder = write_markdown(
-        folder="inbox",
+        folder="journal",
         title=first_line,
         tags=[],
         body=req.text
@@ -92,7 +98,7 @@ async def save_inbox(req: ClassifyRequest):
 
     return ClassifyResponse(
         title=title,
-        folder="inbox",
+        folder="journal",
         tags=[],
         first_sentence=first_line,
         path=filepath
