@@ -186,6 +186,52 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
                     "match_reason": f"related to {project}"
                 }
 
+    # Search by tags (Phase 2.3b enhancement)
+    # Tags are intentional metadata - high signal for relatedness
+    from .fts import search_notes
+
+    # Get tags from note metadata
+    tags = []
+    try:
+        with open(note.get("path", ""), 'r', encoding='utf-8') as f:
+            content = f.read()
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 2:
+                    import yaml
+                    frontmatter = yaml.safe_load(parts[1])
+                    tags = frontmatter.get("tags", [])
+    except Exception:
+        pass
+
+    # Search FTS5 by each tag
+    for tag in tags[:3]:  # Top 3 tags
+        tag_results = search_notes(tag, limit=2)
+        for result in tag_results:
+            result_id = result.get("id")
+            result_path = result.get("path")
+
+            # Skip self and today's notes
+            if result_id == note["id"]:
+                continue
+
+            if exclude_today:
+                # Check if result is from today
+                try:
+                    cur.execute("SELECT created FROM notes_meta WHERE id = ?", (result_id,))
+                    row = cur.fetchone()
+                    if row and row[0] >= today_start:
+                        continue
+                except Exception:
+                    continue
+
+            if result_id not in candidates:
+                candidates[result_id] = {
+                    "id": result_id,
+                    "path": result_path,
+                    "match_reason": f"shares tag: {tag}"
+                }
+
     con.close()
 
     # Read snippets from files
