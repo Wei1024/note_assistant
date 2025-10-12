@@ -12,6 +12,36 @@ from .config import LLM_MODEL, LLM_BASE_URL, LLM_TEMPERATURE, VALID_FOLDERS, WOR
 _http_client = None
 _llm_instance = None
 
+
+def _determine_needs_review(result: dict, raw_text: str) -> tuple[bool, list[str]]:
+    """Heuristic-based review flagging (no fake LLM confidence)
+
+    Returns:
+        (needs_review, reasons) tuple
+    """
+    reasons = []
+
+    # Heuristic 1: Very short text (ambiguous)
+    if len(raw_text.strip()) < 15:
+        reasons.append("Text too short")
+
+    # Heuristic 2: LLM expressed uncertainty
+    reasoning = result.get("reasoning", "").lower()
+    uncertainty_keywords = ["unsure", "could be", "might be", "unclear", "ambiguous", "uncertain"]
+    if any(keyword in reasoning for keyword in uncertainty_keywords):
+        reasons.append("LLM expressed uncertainty")
+
+    # Heuristic 3: Fallback classification
+    if "defaulted" in reasoning or "fallback" in reasoning:
+        reasons.append("Fallback classification used")
+
+    # Heuristic 4: No clear folder match
+    if result.get("folder") == "journal" and not any(word in raw_text.lower() for word in ["feel", "reflect", "today", "grateful", "overwhelmed"]):
+        # Classified as journal but doesn't have journal keywords
+        reasons.append("Weak match for journal folder")
+
+    return len(reasons) > 0, reasons
+
 def get_http_client():
     """Get or create HTTP client with connection pooling"""
     global _http_client
@@ -125,7 +155,6 @@ Return ONLY valid JSON:
 {{
   "title": "Short descriptive title (max 10 words)",
   "folder": "tasks|meetings|ideas|reference|journal",
-  "confidence": 0.0-1.0,
   "reasoning": "Brief explanation of classification choice",
   "tags": ["tag1", "tag2", "tag3"],
   "first_sentence": "One sentence summary",
@@ -165,7 +194,7 @@ Folder Selection Guide (Cognitive Contexts):
 - NO status field (emotions aren't tasks)
 
 Classification Rules:
-1. If confidence < 0.7, explain why in reasoning
+1. If uncertain about classification, explain why in reasoning (e.g., "could be task or idea")
 2. Focus on PRIMARY intent (what is this note mainly about?)
 3. Status field ONLY valid for "tasks" folder
 4. When uncertain between folders, prefer the most actionable context
@@ -184,7 +213,6 @@ JSON:"""
             # Fallback to journal for uncertain classifications
             folder = "journal"
             result["folder"] = folder
-            result["confidence"] = 0.5
             result["reasoning"] = f"Invalid folder '{result.get('folder')}', defaulted to journal"
 
         # Validate status field - ONLY for tasks folder
@@ -207,12 +235,13 @@ JSON:"""
         result.setdefault("title", raw_text.split("\n")[0][:60])
         result.setdefault("tags", [])
         result.setdefault("first_sentence", raw_text.split("\n")[0])
-        result.setdefault("confidence", 0.8)  # Default confidence
         result.setdefault("reasoning", "")
 
-        # Add review flag for low confidence
-        confidence = float(result.get("confidence", 0.8))
-        result["needs_review"] = confidence < CLASSIFICATION_CONFIDENCE_THRESHOLD
+        # Heuristic-based review flagging (no fake confidence)
+        needs_review, review_reasons = _determine_needs_review(result, raw_text)
+        result["needs_review"] = needs_review
+        if review_reasons:
+            result["reasoning"] = result.get("reasoning", "") + " | Review: " + "; ".join(review_reasons)
 
         return result
 
@@ -224,7 +253,6 @@ JSON:"""
             "tags": [],
             "first_sentence": raw_text.split("\n")[0],
             "status": None,
-            "confidence": 0.3,
             "reasoning": f"Classification failed: {str(e)}",
             "needs_review": True,
             "error": str(e)

@@ -25,7 +25,7 @@ def pick_filename(title: str, created_iso: str) -> str:
     return f"{ymd}-{slug}.md"
 
 def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=None, status=None,
-                   confidence=None, needs_review=False, reasoning=None):
+                   needs_review=False, reasoning=None):
     """Write note to disk and index in SQLite"""
     related_ids = related_ids or []
     created = _iso_now()
@@ -55,13 +55,11 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
     if status:
         front["status"] = status
 
-    # Add classification metadata
-    if confidence is not None:
-        front["confidence"] = confidence
+    # Add review flag (no fake confidence in frontmatter)
     if needs_review:
         front["needs_review"] = needs_review
     if reasoning:
-        front["reasoning"] = reasoning
+        front["review_reason"] = reasoning
 
     # Write file
     content = "---\n"
@@ -80,7 +78,9 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         folder=folder,
         path=str(path),
         created=created,
-        status=status
+        status=status,
+        needs_review=needs_review,
+        review_reason=reasoning  # Use reasoning as review_reason
     )
 
     return nid, str(path), front["title"], folder

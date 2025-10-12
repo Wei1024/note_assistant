@@ -51,7 +51,6 @@ async def classify_and_save(req: ClassifyRequest):
             tags=result["tags"],
             body=req.text,
             status=result.get("status"),
-            confidence=result.get("confidence"),
             needs_review=result.get("needs_review", False),
             reasoning=result.get("reasoning")
         )
@@ -72,7 +71,6 @@ async def classify_and_save(req: ClassifyRequest):
             title=first_line,
             tags=[],
             body=req.text,
-            confidence=0.3,
             needs_review=True,
             reasoning=f"Error during classification: {str(e)}"
         )
