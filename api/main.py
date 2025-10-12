@@ -10,6 +10,7 @@ from .notes import write_markdown, update_note_status
 from .fts import ensure_db, search_notes
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
 from .enrichment_service import enrich_note_metadata, store_enrichment_metadata
+from .consolidation_service import consolidate_daily_notes
 import sqlite3
 
 @asynccontextmanager
@@ -180,6 +181,31 @@ async def update_status(req: UpdateStatusRequest):
         return {"success": True, "message": f"Status updated to: {status_value}"}
     else:
         raise HTTPException(status_code=404, detail="Note not found or update failed")
+
+@app.post("/consolidate")
+async def consolidate():
+    """Memory consolidation - link today's notes to existing knowledge.
+
+    Mimics the brain's memory consolidation process during sleep.
+    Analyzes today's notes and creates meaningful links to established knowledge.
+
+    This is an async background operation that:
+    1. Finds today's notes
+    2. Searches for related existing notes (by people, topics, projects)
+    3. Uses LLM to analyze connections in batch
+    4. Creates links in the graph database
+
+    Returns:
+        {
+            "notes_processed": 5,
+            "links_created": 12,
+            "notes_with_links": 4,
+            "started_at": "2025-10-11T22:00:00",
+            "completed_at": "2025-10-11T22:00:15"
+        }
+    """
+    stats = await consolidate_daily_notes()
+    return stats
 
 # EXPERIMENTAL ENDPOINTS (not in production use)
 # These are commented out - see future_agent.py for LangGraph implementations
