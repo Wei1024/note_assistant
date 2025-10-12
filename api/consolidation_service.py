@@ -24,6 +24,107 @@ def _iso_today_start():
     return today.isoformat()
 
 
+def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: str,
+                                note_tags: set = None, db_cursor=None) -> Dict:
+    """Calculate how many dimensions two notes share.
+
+    This provides quantitative context for LLM to assess connection strength.
+
+    Args:
+        note: Dict with entities from get_notes_created_today()
+        candidate_id: Candidate note ID
+        candidate_path: Candidate note path (for tag extraction)
+        note_tags: Optional pre-computed tags for the note (optimization)
+        db_cursor: Optional database cursor (optimization)
+
+    Returns:
+        {
+            "shared_people": ["Sarah", "Alex"],
+            "shared_topics": ["memory", "consolidation"],
+            "shared_projects": ["note-taking app"],
+            "shared_tags": ["research"],
+            "people_count": 2,
+            "topics_count": 2,
+            "projects_count": 1,
+            "tags_count": 1,
+            "total": 6
+        }
+    """
+    import yaml
+
+    # Use provided cursor or create new connection
+    own_connection = False
+    if db_cursor is None:
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        own_connection = True
+    else:
+        cur = db_cursor
+
+    # Get note's entities
+    note_people = {e[1] for e in note.get("entities", []) if e[0] == "person"}
+    note_topics = {e[1] for e in note.get("entities", []) if e[0] == "topic"}
+    note_projects = {e[1] for e in note.get("entities", []) if e[0] == "project"}
+
+    # Get note's tags (use cached if provided)
+    if note_tags is None:
+        note_tags = set()
+        try:
+            with open(note.get("path", ""), 'r', encoding='utf-8') as f:
+                content = f.read()
+                if content.startswith('---'):
+                    parts = content.split('---', 2)
+                    if len(parts) >= 2:
+                        frontmatter = yaml.safe_load(parts[1])
+                        note_tags = set(frontmatter.get("tags", []))
+        except Exception:
+            pass
+
+    # Get candidate's entities
+    cur.execute("SELECT entity_type, entity_value FROM notes_entities WHERE note_id = ?", (candidate_id,))
+    candidate_entities = cur.fetchall()
+
+    candidate_people = {e[1] for e in candidate_entities if e[0] == "person"}
+    candidate_topics = {e[1] for e in candidate_entities if e[0] == "topic"}
+    candidate_projects = {e[1] for e in candidate_entities if e[0] == "project"}
+
+    # Get candidate's tags
+    candidate_tags = set()
+    try:
+        with open(candidate_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 2:
+                    frontmatter = yaml.safe_load(parts[1])
+                    candidate_tags = set(frontmatter.get("tags", []))
+    except Exception:
+        pass
+
+    if own_connection:
+        con.close()
+
+    # Calculate overlaps
+    shared_people = list(note_people & candidate_people)
+    shared_topics = list(note_topics & candidate_topics)
+    shared_projects = list(note_projects & candidate_projects)
+    shared_tags = list(note_tags & candidate_tags)
+
+    overlap = {
+        "shared_people": shared_people,
+        "shared_topics": shared_topics,
+        "shared_projects": shared_projects,
+        "shared_tags": shared_tags,
+        "people_count": len(shared_people),
+        "topics_count": len(shared_topics),
+        "projects_count": len(shared_projects),
+        "tags_count": len(shared_tags),
+        "total": len(shared_people) + len(shared_topics) + len(shared_projects) + len(shared_tags)
+    }
+
+    return overlap
+
+
 def get_notes_created_today() -> List[Dict]:
     """Get all notes created today with their enrichment metadata.
 
@@ -239,8 +340,21 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
                 # Skip on error
                 continue
 
-    con.close()
+    # Pre-compute note's tags for overlap calculation (optimization)
+    import yaml
+    note_tags = set()
+    try:
+        with open(note.get("path", ""), 'r', encoding='utf-8') as f:
+            content = f.read()
+            if content.startswith('---'):
+                parts = content.split('---', 2)
+                if len(parts) >= 2:
+                    frontmatter = yaml.safe_load(parts[1])
+                    note_tags = set(frontmatter.get("tags", []))
+    except Exception:
+        pass
 
+    # Keep DB connection open for overlap calculations (optimization)
     # Read snippets from files
     result = []
     for candidate in list(candidates.values())[:max_candidates]:
@@ -251,7 +365,6 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
                 if content.startswith('---'):
                     parts = content.split('---', 2)
                     if len(parts) >= 3:
-                        import yaml
                         frontmatter = yaml.safe_load(parts[1])
                         title = frontmatter.get("title", "Untitled")
                         body = parts[2].strip()
@@ -263,16 +376,24 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
                     title = "Untitled"
                     snippet = content[:200]
 
+                # Calculate overlap statistics for LLM context (with optimizations)
+                overlap = calculate_candidate_overlap(
+                    note, candidate["id"], candidate["path"],
+                    note_tags=note_tags, db_cursor=cur
+                )
+
                 result.append({
                     "id": candidate["id"],
                     "title": title,
                     "snippet": snippet,
-                    "match_reason": candidate["match_reason"]
+                    "match_reason": candidate["match_reason"],
+                    "overlap": overlap
                 })
         except Exception as e:
             print(f"Error reading candidate {candidate['path']}: {e}")
             continue
 
+    con.close()
     return result
 
 
@@ -291,9 +412,14 @@ async def suggest_links_batch(new_note_text: str, candidates: List[Dict]) -> Lis
 
     llm = get_llm()
 
-    # Format all candidates in one prompt
+    # Format all candidates in one prompt with overlap statistics
     candidates_text = "\n".join([
-        f"{i+1}. [{c['id']}] {c['title']}\n   Snippet: {c['snippet']}\n   Match: {c['match_reason']}"
+        f"{i+1}. [{c['id']}] {c['title']}\n"
+        f"   Snippet: {c['snippet']}\n"
+        f"   Match: {c['match_reason']}\n"
+        f"   Overlap: {c['overlap']['total']} shared dimensions "
+        f"({c['overlap']['people_count']} people, {c['overlap']['topics_count']} topics, "
+        f"{c['overlap']['projects_count']} projects, {c['overlap']['tags_count']} tags)"
         for i, c in enumerate(candidates)
     ])
 
@@ -307,12 +433,6 @@ EXISTING NOTES:
 
 Task: Which existing notes should link to the new note? Analyze ALL at once.
 
-Return ONLY valid JSON array:
-[
-  {{"id": "note-id-from-above", "link_type": "related|spawned|references|contradicts", "reason": "specific shared concept"}},
-  ...
-]
-
 Link Types:
 - **related**: Discusses same topic/concept
 - **spawned**: New note is follow-up/action from old note
@@ -320,17 +440,41 @@ Link Types:
 - **contradicts**: New note challenges old note's conclusion
 
 Rules:
-1. Only include if STRONG connection (shared specific concept/person/project/decision)
-2. Reason must be specific (not "both mention topics")
-3. Max 5 links total (prioritize strongest)
-4. Skip if connection is weak or vague
+1. Only include if CLEAR connection (shared specific concept/person/project/decision)
+2. Use the "Overlap" statistics as context - higher overlap suggests stronger potential connection
+3. Reason must be specific (not "both mention topics")
+4. Max 5 links total (prioritize strongest)
 5. Must use exact note ID from brackets above
+6. Trust your judgment - if overlap is high but semantic meaning differs, skip it
+
+Return ONLY a JSON array (even if empty or single link):
+
+Examples:
+- Multiple links:
+[
+  {{"id": "2025-01-10T14:30:00-08:00_abc1", "link_type": "spawned", "reason": "New note is action item from this meeting"}},
+  {{"id": "2025-01-09T10:15:00-08:00_def2", "link_type": "references", "reason": "Builds on the memory consolidation research discussed here"}}
+]
+
+- Single link:
+[
+  {{"id": "2025-01-08T09:00:00-08:00_ghi3", "link_type": "related", "reason": "Both discuss Sarah's research on hippocampus function"}}
+]
+
+- No links:
+[]
 
 JSON:"""
 
     try:
         response = await llm.ainvoke(prompt)
         result = json.loads(response.content)
+
+        # Handle both array and single object responses
+        if isinstance(result, dict):
+            result = [result]
+        elif not isinstance(result, list):
+            result = []
 
         # Validate and filter results
         valid_links = []
@@ -349,9 +493,9 @@ JSON:"""
             if link["link_type"] not in ["related", "spawned", "references", "contradicts"]:
                 continue
 
-            # Heuristic: Skip vague reasons
+            # Heuristic: Skip very vague reasons (relaxed filter)
             reason_lower = link["reason"].lower()
-            vague_keywords = ["might be", "could be", "possibly", "both mention", "similar"]
+            vague_keywords = ["might be", "possibly", "unclear"]
             if any(kw in reason_lower for kw in vague_keywords):
                 continue
 
