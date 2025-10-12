@@ -3,10 +3,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
-from .models import ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit
+from .models import ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit, UpdateStatusRequest
 from .capture_service import classify_note_async
 from .search_service import search_notes_smart
-from .notes import write_markdown
+from .notes import write_markdown, update_note_status
 from .fts import ensure_db, search_notes
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL
 
@@ -49,7 +49,8 @@ async def classify_and_save(req: ClassifyRequest):
             title=result["title"],
             folder=result["folder"],
             tags=result["tags"],
-            body=req.text
+            body=req.text,
+            status=result.get("status")
         )
 
         return ClassifyResponse(
@@ -99,8 +100,12 @@ async def save_inbox(req: ClassifyRequest):
 
 @app.post("/search", response_model=list[SearchHit])
 async def search(req: SearchRequest):
-    """Search notes using FTS5 (direct keyword match)"""
-    results = search_notes(req.query, req.limit)
+    """Search notes using FTS5 (direct keyword match)
+
+    Supports status filtering:
+    - POST /search {"query": "...", "status": "todo"}
+    """
+    results = search_notes(req.query, req.limit, req.status)
     return [SearchHit(**r) for r in results]
 
 @app.post("/search_fast", response_model=list[SearchHit])
@@ -114,9 +119,41 @@ async def search_fast(req: SearchRequest):
     - "what sport did I watch?"
     - "notes about AWS"
     - "meeting with Sarah"
+
+    Supports status filtering:
+    - POST /search_fast {"query": "...", "status": "todo"}
     """
-    results = await search_notes_smart(req.query, req.limit)
+    results = await search_notes_smart(req.query, req.limit, req.status)
     return [SearchHit(**r) for r in results]
+
+@app.patch("/notes/status")
+async def update_status(req: UpdateStatusRequest):
+    """Update the status of a note
+
+    Request body:
+    {
+        "note_path": "/path/to/note.md",
+        "status": "done"  // or "todo", "in_progress", null
+    }
+
+    Returns:
+        {"success": true} or {"success": false, "error": "..."}
+    """
+    # Validate status
+    valid_statuses = ["todo", "in_progress", "done", "null", None]
+    if req.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+
+    # Convert "null" string to None
+    status_value = None if req.status == "null" or req.status is None else req.status
+
+    # Update the note
+    success = update_note_status(req.note_path, status_value)
+
+    if success:
+        return {"success": True, "message": f"Status updated to: {status_value}"}
+    else:
+        raise HTTPException(status_code=404, detail="Note not found or update failed")
 
 # EXPERIMENTAL ENDPOINTS (not in production use)
 # These are commented out - see future_agent.py for LangGraph implementations

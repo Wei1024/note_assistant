@@ -113,7 +113,7 @@ async def classify_note_async(raw_text: str) -> dict:
         raw_text: The raw note content to classify
 
     Returns:
-        Dictionary with title, folder, tags, first_sentence
+        Dictionary with title, folder, tags, first_sentence, status
     """
     llm = get_llm()  # Use singleton instance
 
@@ -126,7 +126,8 @@ Return ONLY valid JSON:
   "title": "Short descriptive title (max 10 words)",
   "folder": "inbox|projects|people|research|journal",
   "tags": ["tag1", "tag2", "tag3"],
-  "first_sentence": "One sentence summary"
+  "first_sentence": "One sentence summary",
+  "status": "todo|in_progress|done|null"
 }}
 
 Folder selection guide:
@@ -135,6 +136,12 @@ Folder selection guide:
 - research: Learning, articles, investigations
 - journal: Personal thoughts, reflections
 - inbox: When unsure
+
+Status detection guide:
+- "todo": Note describes a task to be done (e.g., "Fix the login bug", "Call Sarah tomorrow", "Deploy to production")
+- "in_progress": Note mentions work currently being done (e.g., "Working on the API", "Currently debugging")
+- "done": Note describes completed work (e.g., "Fixed the bug", "Deployed successfully", "Finished the report")
+- null: Not a task, just information/notes (e.g., "Meeting notes", "Interesting article", "Random thoughts")
 
 Tags should be lowercase, 3-6 relevant keywords.
 
@@ -149,10 +156,17 @@ JSON:"""
         if result.get("folder") not in valid_folders:
             result["folder"] = "inbox"
 
+        # Validate status field
+        valid_statuses = ["todo", "in_progress", "done", None]
+        status = result.get("status")
+        if status == "null" or status not in valid_statuses:
+            result["status"] = None
+
         # Ensure required fields
         result.setdefault("title", raw_text.split("\n")[0][:60])
         result.setdefault("tags", [])
         result.setdefault("first_sentence", raw_text.split("\n")[0])
+        result.setdefault("status", None)
 
         return result
 
@@ -163,5 +177,6 @@ JSON:"""
             "folder": "inbox",
             "tags": [],
             "first_sentence": raw_text.split("\n")[0],
+            "status": None,
             "error": str(e)
         }

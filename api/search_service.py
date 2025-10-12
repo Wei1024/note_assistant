@@ -118,7 +118,7 @@ JSON:"""
         return natural_query
 
 
-async def search_notes_smart(natural_query: str, limit: int = 10) -> list:
+async def search_notes_smart(natural_query: str, limit: int = 10, status: str = None) -> list:
     """Fast search with natural language understanding (no agent overhead).
 
     This is the optimized version that skips the ReAct agent wrapper for
@@ -132,6 +132,7 @@ async def search_notes_smart(natural_query: str, limit: int = 10) -> list:
     Args:
         natural_query: Natural language search query
         limit: Maximum number of results
+        status: Optional status filter (todo, in_progress, done)
 
     Returns:
         List of search results with path, snippet, score
@@ -177,6 +178,6 @@ JSON:"""
         search_query = natural_query
 
     # Step 2: Execute FTS5 search
-    results = fts_search(search_query, limit=limit)
+    results = fts_search(search_query, limit=limit, status=status)
 
     return results

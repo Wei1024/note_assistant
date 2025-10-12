@@ -15,8 +15,13 @@ class ClassifyResponse(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     limit: int = 20
+    status: Optional[str] = None  # Filter by status: todo, in_progress, done
 
 class SearchHit(BaseModel):
     path: str
     snippet: str
     score: float = 0.0
+
+class UpdateStatusRequest(BaseModel):
+    note_path: str
+    status: str  # todo, in_progress, done, or null to remove
