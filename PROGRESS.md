@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-10-12
 **Master Plan:** [refactorplan.md](refactorplan.md)
-**Current Phase:** Phase 2 Complete ✅ → Phase 3 Next
+**Current Phase:** Phase 3.1 Complete ✅ → Phase 3.2/4 Next
 
 ---
 
@@ -290,143 +290,168 @@ Returns statistics:
 
 ---
 
-## 🚧 Next Phase: Phase 3 - Multi-Dimensional Querying
+## ✅ Phase 3: Multi-Dimensional Querying (In Progress)
 
 ### Overview
 Now that we have rich metadata (dimensions, entities, links) stored, we need **query interfaces** to leverage it.
 
-### Phase 3.1: Enhanced Search Endpoints (Week 2)
+---
+
+### Phase 3.1: Enhanced Search Endpoints ✅
+
+**Status:** COMPLETE (2025-10-12)
 
 **Goal:** Create API endpoints to query by dimensions, entities, and relationships.
 
-**Files to Create:**
-- `api/query_service.py` - Query logic layer
+**Files Created:**
+- [api/query_service.py](api/query_service.py) - Query orchestration layer (368 lines)
 
-**Files to Modify:**
-- `api/main.py` - Add new endpoints
-- `api/models.py` - Add request/response models
+**Files Modified:**
+- [api/main.py](api/main.py) - Added 5 new endpoints (+83 lines)
+- [api/models.py](api/models.py) - Added request/response models (+24 lines)
 
-**Endpoints to Implement:**
+**Endpoints Implemented:**
 
-```python
-# 1. Search by dimension
-POST /search/dimensions
-{
-  "dimension_type": "emotion",      # context, emotion, time_reference
-  "dimension_value": "excited",
-  "query_text": "vector search"     # Optional: combine with FTS5
-}
+**1. POST /search/dimensions**
+Search by dimension (context, emotion, time_reference), optionally combined with FTS5 text search.
 
-# 2. Search by entity
-POST /search/entities
-{
-  "entity_type": "person",          # person, topic, project, tech
-  "entity_value": "Sarah",
-  "context": "meetings"             # Optional: filter by folder
-}
-
-# 3. Search by person (convenience wrapper)
-POST /search/person
-{
-  "name": "Sarah",
-  "context": "meetings"             # Optional
-}
-
-# 4. Graph traversal
-POST /search/graph
-{
-  "start_note_id": "2025-10-11...",
-  "depth": 2,                       # How many hops
-  "relationship_type": "spawned"    # Optional: filter link type
-}
-
-# 5. Update existing search endpoints
-POST /search_fast
-{
-  "query": "AWS infrastructure",
-  "person": "Sarah",                # NEW: filter by person
-  "dimension": "excited",           # NEW: filter by emotion
-  "entity_type": "topic"            # NEW: filter by entity type
-}
-```
-
-**Implementation Strategy:**
-
-1. **Create query_service.py functions:**
-```python
-def search_by_dimension(dimension_type: str, dimension_value: str,
-                       query_text: Optional[str] = None) -> List[Dict]:
-    """
-    Find notes by dimension, optionally combined with FTS5 search.
-
-    Example: Find all notes where emotion=excited AND text contains "vector"
-    """
-
-def search_by_entity(entity_type: str, entity_value: str,
-                     context: Optional[str] = None) -> List[Dict]:
-    """
-    Find notes by entity, optionally filtered by folder.
-
-    Example: Find all notes about person=Sarah in folder=meetings
-    """
-
-def search_by_person(person_name: str, context: Optional[str] = None) -> List[Dict]:
-    """
-    Convenience function for person search with case-insensitive matching.
-    """
-
-def search_graph(start_note_id: str, depth: int = 2,
-                 relationship_type: Optional[str] = None) -> Dict:
-    """
-    Traverse graph from starting note.
-
-    Returns: {
-        "nodes": [...],  # All notes found
-        "edges": [...]   # All links traversed
-    }
-    """
-```
-
-2. **Add endpoints to main.py**
-
-3. **Update search_fast to support filters:**
-```python
-async def search_fast(req: SearchRequest):
-    # Existing FTS5 search
-    results = await search_notes_smart(req.query, req.limit)
-
-    # NEW: Apply dimension/entity filters
-    if req.person:
-        results = filter_by_person(results, req.person)
-    if req.dimension:
-        results = filter_by_dimension(results, req.dimension)
-
-    return results
-```
-
-**Testing:**
 ```bash
-# Test dimension search
+# Find all notes where emotion=excited
 curl -X POST http://localhost:8787/search/dimensions \
-  -H "Content-Type: application/json" \
   -d '{"dimension_type": "emotion", "dimension_value": "excited"}'
 
-# Test person search
-curl -X POST http://localhost:8787/search/person \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Sarah", "context": "meetings"}'
-
-# Test graph traversal
-curl -X POST http://localhost:8787/search/graph \
-  -H "Content-Type: application/json" \
-  -d '{"start_note_id": "2025-10-11T22:02:40-07:00_a27f", "depth": 2}'
+# Combined: excited + text contains "FAISS"
+curl -X POST http://localhost:8787/search/dimensions \
+  -d '{"dimension_type": "emotion", "dimension_value": "excited", "query_text": "FAISS"}'
 ```
+
+**2. POST /search/entities**
+Search by entity (person, topic, project, tech), optionally filtered by folder.
+
+```bash
+# Find all notes about topic=FAISS
+curl -X POST http://localhost:8787/search/entities \
+  -d '{"entity_type": "topic", "entity_value": "FAISS"}'
+
+# Filter by folder: person=Sarah in meetings
+curl -X POST http://localhost:8787/search/entities \
+  -d '{"entity_type": "person", "entity_value": "Sarah", "context": "meetings"}'
+```
+
+**3. POST /search/person**
+Convenience endpoint for person search with case-insensitive matching.
+
+```bash
+# Find all notes mentioning Sarah (case-insensitive)
+curl -X POST http://localhost:8787/search/person \
+  -d '{"name": "Sarah"}'
+
+# Filter by folder context
+curl -X POST http://localhost:8787/search/person \
+  -d '{"name": "Sarah", "context": "meetings"}'
+```
+
+**4. POST /search/graph**
+Traverse graph from starting note, return nodes + edges for visualization.
+
+```bash
+# Get all notes within 2 hops
+curl -X POST http://localhost:8787/search/graph \
+  -d '{"start_note_id": "2025-10-12T16:01:41-07:00_744d", "depth": 2}'
+
+# Filter by relationship type
+curl -X POST http://localhost:8787/search/graph \
+  -d '{"start_note_id": "...", "depth": 1, "relationship_type": "spawned"}'
+```
+
+**5. GET /notes/{note_id}/graph**
+Graph visualization data endpoint (REST-friendly GET).
+
+```bash
+# Get graph data for visualization
+curl http://localhost:8787/notes/2025-10-12T16:01:41-07:00_744d/graph?depth=2
+```
+
+**Implementation Details:**
+
+**query_service.py functions:**
+- `search_by_dimension()` - Query dimensions table, optional FTS5 combo
+- `search_by_entity()` - Query entities table with folder filter
+- `search_by_person()` - Convenience wrapper with case-insensitive search
+- `search_graph()` - Traverse graph using get_graph_neighborhood()
+- `get_graph_visualization()` - Wrapper for GET endpoint
+
+**Architecture:**
+- ✅ Reuses existing graph.py helpers (no duplication)
+- ✅ Thin orchestration layer (query_service.py)
+- ✅ Helper functions for formatting and filtering
+- ✅ D3.js/Cytoscape/Vue Flow compatible graph format
+- ✅ No over-engineering (no caching/pagination yet)
+
+**Response Format:**
+All search endpoints return:
+```json
+[
+  {
+    "path": "/path/to/note.md",
+    "snippet": "First 200 chars of note body...",
+    "score": 1.0,
+    "metadata": {
+      "folder": "meetings",
+      "created": "2025-10-12T09:00:00-07:00",
+      "title": "Meeting with Sarah"
+    }
+  }
+]
+```
+
+Graph endpoints return:
+```json
+{
+  "nodes": [
+    {
+      "id": "...",
+      "title": "...",
+      "path": "...",
+      "folder": "meetings",
+      "created": "...",
+      "metadata": {
+        "entity_count": 5,
+        "dimension_count": 3,
+        "has_entities": {"person": ["Sarah"], "topic": ["FAISS"]}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "note_id_1",
+      "to": "note_id_2",
+      "source": "note_id_1",  // D3.js alias
+      "target": "note_id_2",  // D3.js alias
+      "type": "spawned"
+    }
+  ]
+}
+```
+
+**Key Files:**
+- [api/query_service.py](api/query_service.py) - Query orchestration layer
+- [api/main.py](api/main.py:230-310) - New endpoints
+- [api/models.py](api/models.py:29-51) - Request/response models
 
 ---
 
-### Phase 3.2: Natural Language Query Interface (Week 2)
+### Phase 3.2: Natural Language Query Interface (Optional/Future)
+
+**Status:** NOT IMPLEMENTED (deferred - Phase 3.1 endpoints sufficient for now)
 
 **Goal:** User asks questions in plain English, LLM converts to structured queries.
+
+**Decision:** Hold off on this phase because:
+- Current FTS5 search already has natural language query rewriting (search_notes_smart)
+- Phase 3.1 endpoints provide structured access to all metadata
+- Can add later if users need conversational querying
+- Would add complexity without clear user demand
 
 **Files to Modify:**
 - `api/query_service.py` - Add natural_language_query()
@@ -523,71 +548,21 @@ This is where LangGraph shines - multi-step reasoning required:
 
 ---
 
-### Phase 3.3: Graph Visualization Data (Week 2)
+### Phase 3.3: Graph Visualization Data ✅
+
+**Status:** COMPLETE (included in Phase 3.1)
 
 **Goal:** Provide data for future graph UI.
 
-**Files to Modify:**
-- `api/query_service.py` - Add get_graph_data()
-- `api/main.py` - Add /notes/{note_id}/graph endpoint
+**What Was Built:**
+Graph visualization was included in Phase 3.1 implementation:
+- ✅ POST /search/graph - Returns nodes + edges with full metadata
+- ✅ GET /notes/{note_id}/graph - REST-friendly GET endpoint
+- ✅ D3.js/Cytoscape/Vue Flow compatible format
+- ✅ Entity/dimension counts for visual styling
+- ✅ source/target aliases for D3.js compatibility
 
-**Implementation:**
-
-```python
-def get_graph_data(center_note_id: str, depth: int = 2) -> Dict:
-    """
-    Get graph data for visualization.
-
-    Returns nodes and edges in format suitable for D3.js, Cytoscape, etc.
-    """
-    from .graph import get_graph_neighborhood
-
-    graph = get_graph_neighborhood(center_note_id, depth)
-
-    # Enrich with metadata for visualization
-    for node in graph["nodes"]:
-        # Add folder (for color coding)
-        # Add entity counts
-        # Add dimensions
-        node["metadata"] = {
-            "folder": node["folder"],
-            "entity_count": len(get_entities(node["id"])),
-            "dimension_count": len(get_dimensions(node["id"]))
-        }
-
-    return graph
-
-@app.get("/notes/{note_id}/graph")
-async def get_note_graph(note_id: str, depth: int = 2):
-    """Get graph visualization data"""
-    return get_graph_data(note_id, depth)
-```
-
-**Response Format:**
-```json
-{
-  "nodes": [
-    {
-      "id": "2025-10-11T22:02:40-07:00_a27f",
-      "path": "/Users/.../note.md",
-      "folder": "meetings",
-      "created": "2025-10-11T22:02:40-07:00",
-      "metadata": {
-        "folder": "meetings",
-        "entity_count": 5,
-        "dimension_count": 3
-      }
-    }
-  ],
-  "edges": [
-    {
-      "from": "2025-10-11T22:02:40-07:00_a27f",
-      "to": "2025-10-12T13:24:06-07:00_5e5b",
-      "type": "spawned"
-    }
-  ]
-}
-```
+This functionality is production-ready and available now.
 
 ---
 
@@ -640,7 +615,14 @@ async def get_note_graph(note_id: str, depth: int = 2):
 - Batch LLM link analysis
 - Conservative linking (quality > quantity)
 
-**5. Graph Operations (via Python):**
+**5. Multi-Dimensional Queries (Phase 3.1):**
+- POST /search/dimensions - Search by emotion/context/time_reference
+- POST /search/entities - Search by person/topic/project/tech
+- POST /search/person - Case-insensitive person search
+- POST /search/graph - Graph traversal with depth control
+- GET /notes/{note_id}/graph - Graph visualization data
+
+**6. Graph Operations (via Python):**
 ```python
 from api.graph import *
 
@@ -656,16 +638,14 @@ get_graph_neighborhood(note_id, depth=2)
 
 ### What's Missing (Next Steps) 🚧
 
-**Immediate (Phase 3):**
-- ❌ API endpoints for dimension/entity search
-- ❌ Natural language query interface
-- ❌ Graph visualization data endpoint
+**Optional (Phase 3.2):**
+- ⏸️ Natural language query interface (deferred - current endpoints sufficient)
 
 **Later:**
-- ❌ Archive system
-- ❌ Review workflows
-- ❌ Vector search (embeddings)
-- ❌ Cron-based auto-consolidation
+- ❌ Archive system (Phase 4)
+- ❌ Review workflows (Phase 4)
+- ❌ Vector search with embeddings (Phase 7)
+- ❌ Cron-based auto-consolidation (Phase 2.3c)
 
 ---
 
@@ -678,7 +658,7 @@ api/
 ├── enrichment_service.py     # Multi-dimensional metadata extraction (LLM)
 ├── consolidation_service.py  # Memory consolidation & linking (LLM + SQL)
 ├── graph.py                  # Graph operations (CRUD + query helpers)
-├── query_service.py          # [TODO] Advanced query interface
+├── query_service.py          # Multi-dimensional query interface (Phase 3.1) ✅
 ├── search_service.py         # Natural language search (LLM + FTS5)
 ├── notes.py                  # Markdown file operations
 ├── fts.py                    # SQLite FTS5 + schema management
@@ -707,7 +687,7 @@ Trigger /consolidate
   → add_link() [DB via graph.py]
 ```
 
-**Search Flow (current):**
+**Search Flow (Text Search):**
 ```
 User query
   → search_notes_smart() [LLM query rewrite]
@@ -715,13 +695,25 @@ User query
   → Results
 ```
 
-**Search Flow (Phase 3):**
+**Query Flow (Phase 3.1 - Multi-Dimensional):**
 ```
-User query
-  → natural_language_query() [LLM converts to structured]
-  → search_by_dimension/entity/graph() [SQL]
-  → synthesize_answer() [LLM]
-  → Results + Answer
+Dimension query
+  → search_by_dimension() [query_service.py]
+  → find_notes_by_dimension() [graph.py → SQL]
+  → Optional: combine with FTS5 text search
+  → Results
+
+Entity query
+  → search_by_entity() [query_service.py]
+  → find_notes_by_entity() [graph.py → SQL]
+  → Optional: filter by context (folder)
+  → Results
+
+Graph query
+  → search_graph() [query_service.py]
+  → get_graph_neighborhood() [graph.py → SQL]
+  → Enrich with metadata (entities/dimensions)
+  → Nodes + Edges (D3.js/Vue compatible)
 ```
 
 ---
