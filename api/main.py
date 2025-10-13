@@ -3,7 +3,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
-from .models import ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit, UpdateStatusRequest
+from .models import (
+    ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit, UpdateStatusRequest,
+    DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
+    GraphSearchRequest, GraphData
+)
 from .capture_service import classify_note_async
 from .search_service import search_notes_smart
 from .notes import write_markdown, update_note_status
@@ -11,6 +15,10 @@ from .fts import ensure_db, search_notes
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
 from .enrichment_service import enrich_note_metadata, store_enrichment_metadata
 from .consolidation_service import consolidate_daily_notes, consolidate_note
+from .query_service import (
+    search_by_dimension, search_by_entity, search_by_person,
+    search_graph, get_graph_visualization
+)
 import sqlite3
 
 @asynccontextmanager
@@ -217,6 +225,89 @@ async def consolidate_batch():
     """
     stats = await consolidate_daily_notes()
     return stats
+
+
+# ============================================================================
+# Phase 3.1: Multi-Dimensional Query Endpoints
+# ============================================================================
+
+@app.post("/search/dimensions", response_model=list[SearchHit])
+async def search_dimensions(req: DimensionSearchRequest):
+    """Search notes by dimension (context, emotion, time_reference).
+
+    Optionally combine with FTS5 text search.
+
+    Examples:
+        - {"dimension_type": "emotion", "dimension_value": "excited"}
+        - {"dimension_type": "emotion", "dimension_value": "excited", "query_text": "vector search"}
+        - {"dimension_type": "context", "dimension_value": "tasks"}
+    """
+    results = search_by_dimension(
+        req.dimension_type,
+        req.dimension_value,
+        query_text=req.query_text
+    )
+    return [SearchHit(**r) for r in results]
+
+
+@app.post("/search/entities", response_model=list[SearchHit])
+async def search_entities(req: EntitySearchRequest):
+    """Search notes by entity (person, topic, project, tech).
+
+    Optionally filter by folder context.
+
+    Examples:
+        - {"entity_type": "topic", "entity_value": "vector search"}
+        - {"entity_type": "person", "entity_value": "Sarah", "context": "meetings"}
+        - {"entity_type": "project", "entity_value": "note-taking app"}
+    """
+    results = search_by_entity(
+        req.entity_type,
+        req.entity_value,
+        context=req.context
+    )
+    return [SearchHit(**r) for r in results]
+
+
+@app.post("/search/person", response_model=list[SearchHit])
+async def search_person(req: PersonSearchRequest):
+    """Convenience endpoint for person search with case-insensitive matching.
+
+    Examples:
+        - {"name": "Sarah"}
+        - {"name": "sarah", "context": "meetings"}
+    """
+    results = search_by_person(req.name, context=req.context)
+    return [SearchHit(**r) for r in results]
+
+
+@app.post("/search/graph", response_model=GraphData)
+async def search_graph_endpoint(req: GraphSearchRequest):
+    """Traverse graph from starting note and return nodes + edges.
+
+    Examples:
+        - {"start_note_id": "2025-10-12T09:00:00-07:00_a1b2", "depth": 2}
+        - {"start_note_id": "...", "depth": 1, "relationship_type": "spawned"}
+    """
+    graph = search_graph(
+        req.start_note_id,
+        depth=req.depth,
+        relationship_type=req.relationship_type
+    )
+    return GraphData(**graph)
+
+
+@app.get("/notes/{note_id}/graph", response_model=GraphData)
+async def get_note_graph(note_id: str, depth: int = 2):
+    """Get graph visualization data for a note.
+
+    Query params:
+        - depth: Traversal depth (default: 2)
+
+    Returns graph data formatted for D3.js, Cytoscape, Vue Flow, etc.
+    """
+    graph = get_graph_visualization(note_id, depth=depth)
+    return GraphData(**graph)
 
 # EXPERIMENTAL ENDPOINTS (not in production use)
 # These are commented out - see future_agent.py for LangGraph implementations

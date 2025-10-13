@@ -25,3 +25,27 @@ class SearchHit(BaseModel):
 class UpdateStatusRequest(BaseModel):
     note_path: str
     status: str  # todo, in_progress, done, or null to remove
+
+# Phase 3.1: Multi-dimensional query models
+class DimensionSearchRequest(BaseModel):
+    dimension_type: str  # context, emotion, time_reference
+    dimension_value: str
+    query_text: Optional[str] = None  # Optional FTS5 combination
+
+class EntitySearchRequest(BaseModel):
+    entity_type: str  # person, topic, project, tech
+    entity_value: str
+    context: Optional[str] = None  # Optional folder filter
+
+class PersonSearchRequest(BaseModel):
+    name: str
+    context: Optional[str] = None  # Optional folder filter
+
+class GraphSearchRequest(BaseModel):
+    start_note_id: str
+    depth: int = 2
+    relationship_type: Optional[str] = None  # Optional: related, spawned, references, contradicts
+
+class GraphData(BaseModel):
+    nodes: List[dict]
+    edges: List[dict]
