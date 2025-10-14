@@ -143,20 +143,33 @@ async def search(req: SearchRequest):
     results = search_notes(req.query, req.limit, req.status)
     return [SearchHit(**r) for r in results]
 
-@app.post("/search_fast", response_model=list[SearchHit])
-async def search_fast(req: SearchRequest):
-    """Fast natural language search - 70% faster than agent-based
+@app.post("/search_smart", response_model=list[SearchHit])
+async def search_smart(req: SearchRequest):
+    """Smart natural language search with multi-dimensional filtering
 
-    Uses direct query rewriting + FTS5, no ReAct agent overhead.
-    Optimized for production with async processing and connection pooling.
+    Intelligently routes queries to appropriate search endpoints:
+    - Understands people: "notes with Sarah" → search_by_person()
+    - Understands emotions: "excited notes" → search_by_dimension()
+    - Understands entities: "FAISS project" → search_by_entity()
+    - Falls back to FTS5 text search for everything else
 
     Example queries:
+    - "what's the recent project I did with Sarah"
+    - "notes where I felt excited"
+    - "meetings about FAISS"
     - "what sport did I watch?"
-    - "notes about AWS"
-    - "meeting with Sarah"
 
     Supports status filtering:
-    - POST /search_fast {"query": "...", "status": "todo"}
+    - POST /search_smart {"query": "...", "status": "todo"}
+    """
+    results = await search_notes_smart(req.query, req.limit, req.status)
+    return [SearchHit(**r) for r in results]
+
+@app.post("/search_fast", response_model=list[SearchHit])
+async def search_fast(req: SearchRequest):
+    """DEPRECATED: Use /search_smart instead
+
+    Kept for backwards compatibility. Will be removed in future version.
     """
     results = await search_notes_smart(req.query, req.limit, req.status)
     return [SearchHit(**r) for r in results]

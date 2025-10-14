@@ -72,8 +72,8 @@ def capture_note():
         print(f"{Colors.RED}Error: {e}{Colors.END}")
 
 def search_notes():
-    """Search with optimized smart search"""
-    print_section("🔍", "Smart Search (Fast - Optimized)")
+    """Search with smart natural language understanding"""
+    print_section("🔍", "Smart Search (Natural Language)")
 
     print(f"{Colors.CYAN}Enter search query:{Colors.END} ", end='')
     query = input().strip()
@@ -85,7 +85,7 @@ def search_notes():
 
     try:
         response = requests.post(
-            f"{BACKEND_URL}/search_fast",
+            f"{BACKEND_URL}/search_smart",
             json={"query": query, "limit": 10},
             timeout=30
         )
@@ -139,8 +139,8 @@ def main_menu():
     
     while True:
         print(f"\n{Colors.BOLD}Main Menu:{Colors.END}")
-        print(f"  {Colors.CYAN}1.{Colors.END} 📝 Capture Note (Fast - Optimized)")
-        print(f"  {Colors.CYAN}2.{Colors.END} 🔍 Search Notes (Fast - Optimized)")
+        print(f"  {Colors.CYAN}1.{Colors.END} 📝 Capture Note (Fast)")
+        print(f"  {Colors.CYAN}2.{Colors.END} 🔍 Search Notes (Smart - Natural Language)")
         print(f"  {Colors.CYAN}3.{Colors.END} 📋 List Notes")
         print(f"  {Colors.CYAN}4.{Colors.END} ❌ Quit")
         

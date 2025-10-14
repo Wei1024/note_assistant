@@ -21,6 +21,7 @@ class SearchHit(BaseModel):
     path: str
     snippet: str
     score: float = 0.0
+    metadata: Optional[dict] = None  # Optional metadata (match_type, search_note, folder, created, title)
 
 class UpdateStatusRequest(BaseModel):
     note_path: str

@@ -1,8 +1,8 @@
 # Multi-Dimensional Brain-Based Note System - Implementation Progress
 
-**Last Updated:** 2025-10-12
+**Last Updated:** 2025-10-13
 **Master Plan:** [refactorplan.md](refactorplan.md)
-**Current Phase:** Phase 3.1 Complete ✅ → Phase 3.2/4 Next
+**Current Phase:** Phase 3.1 Complete ✅ | Smart Search Enhanced ✅ → Phase 3.2/4 Next
 
 ---
 
@@ -290,7 +290,7 @@ Returns statistics:
 
 ---
 
-## ✅ Phase 3: Multi-Dimensional Querying (In Progress)
+## ✅ Phase 3: Multi-Dimensional Querying (Complete)
 
 ### Overview
 Now that we have rich metadata (dimensions, entities, links) stored, we need **query interfaces** to leverage it.
@@ -438,6 +438,65 @@ Graph endpoints return:
 - [api/query_service.py](api/query_service.py) - Query orchestration layer
 - [api/main.py](api/main.py:230-310) - New endpoints
 - [api/models.py](api/models.py:29-51) - Request/response models
+
+---
+
+### Phase 3.1b: Smart Search Enhancement ✅
+
+**Status:** COMPLETE (2025-10-13)
+
+**Goal:** Integrate Phase 3.1 endpoints with natural language search for single search bar experience.
+
+**What Was Built:**
+
+**New Endpoint: POST /search_smart** (renamed from /search_fast)
+- Parses natural language queries to extract filters (1 LLM call)
+- Intelligently routes to appropriate Phase 3.1 endpoint
+- Relaxed fallback: if no exact match, searches all folders
+
+**Query Understanding:**
+```
+"meetings about FAISS"
+  → Parses: context=meetings, entity_value=FAISS
+  → Routes: search_by_entity("FAISS", context="meetings")
+  → Fallback: If 0 results, retry without context filter
+  → Returns: Results with match_type="related" indicator
+
+"what did I do with Sarah"
+  → Parses: person=Sarah
+  → Routes: search_by_person("Sarah")
+
+"notes where I felt excited"
+  → Parses: emotion=excited
+  → Routes: search_by_dimension("emotion", "excited")
+```
+
+**Routing Priority:**
+1. Person filter → `search_by_person()`
+2. Emotion filter → `search_by_dimension()`
+3. Entity filter → `search_by_entity()`
+4. Text only → FTS5 fallback
+
+**Relaxed Search Behavior:**
+- Tries strict search first (e.g., "meetings about FAISS" → search meetings folder)
+- If 0 results, automatically relaxes (searches all folders)
+- Marks relaxed results with `metadata.match_type = "related"`
+- Adds helpful note: "Found in different folder (searched all folders)"
+
+**Benefits:**
+- ✅ Single search bar for frontend (no need for multiple inputs)
+- ✅ Human-like flexibility (finds related results instead of nothing)
+- ✅ Still only 1 LLM call (query parsing + routing combined)
+- ✅ Clear indicators (exact vs related matches)
+
+**Files Modified:**
+- [api/search_service.py](api/search_service.py) - Added parse_smart_query(), enhanced routing
+- [api/main.py](api/main.py) - Added /search_smart endpoint
+- [api/models.py](api/models.py) - Added metadata field to SearchHit
+- [cli.py](cli.py) - Updated to use /search_smart
+
+**Key Files:**
+- [api/search_service.py](api/search_service.py:121-306) - Smart query parser and router
 
 ---
 
@@ -603,7 +662,11 @@ This functionality is production-ready and available now.
 
 **2. Search:**
 - POST /search - Direct FTS5 keyword search
-- POST /search_fast - Natural language search with LLM query rewriting
+- POST /search_smart - Smart natural language search with multi-dimensional routing ✨ NEW
+  - Intelligently routes to person/emotion/entity endpoints
+  - Relaxed fallback: searches all folders if no exact context match
+  - Returns metadata including match_type (exact/related)
+- POST /search_fast - Deprecated (use /search_smart)
 - Status filtering (find tasks by todo/in_progress/done)
 
 **3. Status Management:**
