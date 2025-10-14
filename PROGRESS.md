@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-10-13
 **Master Plan:** [refactorplan.md](refactorplan.md)
-**Current Phase:** Phase 3.1 Complete ✅ | Smart Search Enhanced ✅ → Phase 3.2/4 Next
+**Current Phase:** Code Refactoring Complete ✅ | Phase 3.1 Complete ✅ | Smart Search Enhanced ✅ → Phase 3.2 (Synthesis) Next
 
 ---
 
@@ -497,6 +497,106 @@ Graph endpoints return:
 
 **Key Files:**
 - [api/search_service.py](api/search_service.py:121-306) - Smart query parser and router
+
+---
+
+### Code Refactoring: Clean Architecture (2025-10-13) ✅
+
+**Status:** COMPLETE (Phases 0-3)
+
+**Goal:** Improve code organization, eliminate duplication, fix bugs, and establish clean layer separation.
+
+**What Changed:**
+
+#### Phase 0: Test Infrastructure ✅
+- Added 15 comprehensive regression tests in `tests/test_refactor_regression.py`
+- Tests cover: classification, enrichment, search, consolidation, LLM client
+- Established baseline before any refactoring (all tests passing)
+
+#### Phase 1: Extract LLM Infrastructure ✅
+**New Structure:**
+```
+api/llm/
+├── client.py      # Singleton LLM with lifecycle management
+├── prompts.py     # All prompt templates centralized
+└── __init__.py    # Clean public API
+```
+
+**Changes:**
+- Removed duplicate `get_llm()` and `get_http_client()` from capture_service.py and search_service.py
+- All services now import from `api.llm`
+- Added `initialize_llm()` and `shutdown_llm()` lifecycle functions
+- Updated main.py to properly cleanup HTTP connections on shutdown
+- **Fixed critical bug:** httpx AsyncClient connection leak
+
+**Benefits:**
+- Single source of truth for LLM client
+- Centralized prompts for easy versioning
+- Proper resource cleanup prevents memory leaks
+
+#### Phase 2: Repository Layer ✅
+**New Structure:**
+```
+api/repositories/
+├── notes_repo.py      # Note CRUD operations
+├── graph_repo.py      # Dimensions, entities, links
+├── search_repo.py     # FTS5 full-text search
+└── __init__.py        # Singleton instances
+```
+
+**Changes:**
+- Created repository classes wrapping existing graph.py, fts.py, notes.py helpers
+- Updated enrichment_service.py and consolidation_service.py to use repositories
+- Consistent interface: `find_by_*()`, `get_*()`, `create()`, `update()`
+
+**Benefits:**
+- Clean separation between business logic and data access
+- Easier to test (can mock repositories)
+- Single place to optimize queries
+- Prepared for potential database changes
+
+#### Phase 3: Folder Organization ✅
+**New Structure:**
+```
+api/
+├── services/          # Business Logic
+│   ├── capture.py
+│   ├── enrichment.py
+│   ├── search.py
+│   ├── consolidation.py
+│   └── query.py
+├── repositories/      # Data Access
+├── llm/              # LLM Infrastructure
+├── db/               # Database
+│   └── schema.py     # Schema definitions
+├── main.py           # HTTP Routing
+├── config.py
+└── models.py
+```
+
+**Changes:**
+- Moved all `*_service.py` files to `api/services/` folder
+- Created `api/db/schema.py` (extracted from fts.py)
+- Updated all imports throughout codebase
+- Removed `_service` suffix (folder organization makes it clear)
+
+**Benefits:**
+- Clear layer separation
+- Easier navigation
+- Prepared for future phases (synthesis, frontend)
+
+**Testing Results:**
+- All 15 regression tests passing ✅
+- No behavior changes - pure refactor
+- 3 commits: Phase 1 (LLM), Phase 2 (Repos), Phase 3 (Folders)
+
+**Key Files Modified:**
+- api/services/* (all service files)
+- api/repositories/* (new)
+- api/llm/* (new)
+- api/db/* (new)
+- api/main.py (updated imports + lifecycle)
+- tests/test_refactor_regression.py (new)
 
 ---
 
