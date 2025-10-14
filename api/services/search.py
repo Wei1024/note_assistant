@@ -4,9 +4,9 @@ Direct query rewriting + FTS5 (no agent overhead for 70% faster performance)
 """
 import json
 from langchain_core.tools import tool
-from .llm import get_llm
-from .llm.prompts import Prompts
-from .fts import search_notes as fts_search
+from ..llm import get_llm
+from ..llm.prompts import Prompts
+from ..fts import search_notes as fts_search
 
 
 @tool
@@ -143,7 +143,7 @@ async def search_notes_smart(natural_query: str, limit: int = 10, status: str = 
         List of search results with path, snippet, score
     """
     # Import Phase 3.1 query functions
-    from .query_service import search_by_person, search_by_dimension, search_by_entity
+    from .query import search_by_person, search_by_dimension, search_by_entity
 
     # Step 1: Parse query to extract filters (1 LLM call)
     filters = await parse_smart_query(natural_query)

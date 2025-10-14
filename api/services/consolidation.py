@@ -9,10 +9,10 @@ import json
 import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from .config import DB_PATH
-from .llm import get_llm
-from .llm.prompts import Prompts
-from .repositories import graph_repo, notes_repo
+from ..config import DB_PATH
+from ..llm import get_llm
+from ..llm.prompts import Prompts
+from ..repositories import graph_repo, notes_repo
 
 
 def _iso_now():
@@ -221,7 +221,7 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
 
     # Search by tags (Phase 2.3b enhancement)
     # Tags are intentional metadata - high signal for relatedness
-    from .fts import search_notes
+    from ..fts import search_notes
 
     # Get tags from note metadata
     tags = []

@@ -20,12 +20,14 @@ import os
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api.capture_service import classify_note_async, get_llm
-from api.search_service import search_notes_smart, parse_smart_query
-from api.enrichment_service import enrich_note_metadata
-from api.consolidation_service import find_link_candidates, suggest_links_batch
+from api.services.capture import classify_note_async
+from api.services.search import search_notes_smart, parse_smart_query
+from api.services.enrichment import enrich_note_metadata
+from api.services.consolidation import find_link_candidates, suggest_links_batch
+from api.llm import get_llm
 from api.notes import write_markdown
-from api.fts import ensure_db, search_notes
+from api.fts import search_notes
+from api.db import ensure_db
 from api.config import DB_PATH, NOTES_DIR
 
 

@@ -4,9 +4,9 @@ Direct LLM-based classification (no agent overhead for fast performance)
 """
 import json
 from langchain_core.tools import tool
-from .config import VALID_FOLDERS, WORKING_FOLDERS, CLASSIFICATION_CONFIDENCE_THRESHOLD
-from .llm import get_llm
-from .llm.prompts import Prompts
+from ..config import VALID_FOLDERS, WORKING_FOLDERS, CLASSIFICATION_CONFIDENCE_THRESHOLD
+from ..llm import get_llm
+from ..llm.prompts import Prompts
 
 
 def _determine_needs_review(result: dict, raw_text: str) -> tuple[bool, list[str]]:

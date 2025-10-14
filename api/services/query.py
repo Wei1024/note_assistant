@@ -4,8 +4,8 @@ Provides high-level query functions that orchestrate graph.py helpers
 """
 import sqlite3
 from typing import List, Dict, Optional
-from .config import DB_PATH
-from .graph import (
+from ..config import DB_PATH
+from ..graph import (
     find_notes_by_dimension,
     find_notes_by_entity,
     find_notes_by_person,
@@ -13,7 +13,7 @@ from .graph import (
     get_entities,
     get_dimensions
 )
-from .fts import search_notes
+from ..fts import search_notes
 
 
 def search_by_dimension(dimension_type: str, dimension_value: str,
@@ -216,7 +216,7 @@ def _get_paths_for_note_ids(note_ids: List[str]) -> Dict[str, str]:
         Dict mapping note_id -> path
     """
     import sqlite3
-    from .config import DB_PATH
+    from ..config import DB_PATH
 
     if not note_ids:
         return {}
@@ -246,7 +246,7 @@ def _filter_by_context(note_ids: List[str], context: str) -> List[str]:
         Filtered list of note IDs
     """
     import sqlite3
-    from .config import DB_PATH
+    from ..config import DB_PATH
 
     if not note_ids:
         return []
@@ -300,7 +300,7 @@ def _format_results_from_ids(note_ids: List[str]) -> List[Dict]:
     """
     import sqlite3
     import yaml
-    from .config import DB_PATH
+    from ..config import DB_PATH
 
     if not note_ids:
         return []

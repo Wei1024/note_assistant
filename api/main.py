@@ -9,17 +9,18 @@ from .models import (
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
     GraphSearchRequest, GraphData
 )
-from .capture_service import classify_note_async
-from .search_service import search_notes_smart
-from .notes import write_markdown, update_note_status
-from .fts import ensure_db, search_notes
-from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
-from .enrichment_service import enrich_note_metadata, store_enrichment_metadata
-from .consolidation_service import consolidate_daily_notes, consolidate_note
-from .query_service import (
+from .services.capture import classify_note_async
+from .services.search import search_notes_smart
+from .services.enrichment import enrich_note_metadata, store_enrichment_metadata
+from .services.consolidation import consolidate_daily_notes, consolidate_note
+from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
     search_graph, get_graph_visualization
 )
+from .notes import write_markdown, update_note_status
+from .fts import search_notes
+from .db import ensure_db
+from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, DB_PATH
 import sqlite3
 
 @asynccontextmanager

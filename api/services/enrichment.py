@@ -4,9 +4,9 @@ Extracts multi-dimensional metadata from classified notes
 """
 import json
 from datetime import datetime
-from .llm import get_llm
-from .llm.prompts import Prompts
-from .config import WORKING_FOLDERS
+from ..llm import get_llm
+from ..llm.prompts import Prompts
+from ..config import WORKING_FOLDERS
 
 
 def _iso_now():
@@ -80,7 +80,7 @@ def store_enrichment_metadata(note_id: str, enrichment: dict, db_connection):
         enrichment: Result from enrich_note_metadata()
         db_connection: SQLite connection object
     """
-    from .repositories import graph_repo
+    from ..repositories import graph_repo
 
     # Use repository to batch store all enrichment metadata
     graph_repo.store_enrichment(note_id, enrichment, db_connection)
