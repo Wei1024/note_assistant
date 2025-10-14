@@ -3,41 +3,10 @@ Search Service - Fast natural language search
 Direct query rewriting + FTS5 (no agent overhead for 70% faster performance)
 """
 import json
-import httpx
 from langchain_core.tools import tool
-from langchain_ollama import ChatOllama
-from .config import LLM_MODEL, LLM_BASE_URL, LLM_TEMPERATURE
+from .llm import get_llm
+from .llm.prompts import Prompts
 from .fts import search_notes as fts_search
-
-# HTTP client with connection pooling for Ollama
-_http_client = None
-_llm_instance = None
-
-def get_http_client():
-    """Get or create HTTP client with connection pooling"""
-    global _http_client
-    if _http_client is None:
-        _http_client = httpx.AsyncClient(
-            limits=httpx.Limits(
-                max_keepalive_connections=10,  # Keep 10 connections alive
-                max_connections=20,             # Max 20 concurrent connections
-                keepalive_expiry=30.0          # Keep alive for 30 seconds
-            ),
-            timeout=httpx.Timeout(30.0, connect=5.0)  # 30s timeout, 5s connect
-        )
-    return _http_client
-
-def get_llm():
-    """Get or create singleton LLM instance with connection pooling"""
-    global _llm_instance
-    if _llm_instance is None:
-        _llm_instance = ChatOllama(
-            base_url=LLM_BASE_URL,
-            model=LLM_MODEL,
-            temperature=LLM_TEMPERATURE,
-            http_client=get_http_client()  # Enable connection pooling
-        )
-    return _llm_instance
 
 
 @tool
@@ -136,67 +105,8 @@ async def parse_smart_query(natural_query: str) -> dict:
     Returns:
         Dict with extracted filters
     """
-    llm = ChatOllama(
-        base_url=LLM_BASE_URL,
-        model=LLM_MODEL,
-        temperature=0.1,  # Low temperature for consistent parsing
-        format="json",
-        http_client=get_http_client()
-    )
-
-    prompt = f"""Parse this search query and extract structured filters.
-
-User query: "{natural_query}"
-
-Extract any of these filters if clearly present:
-- person: Name of person (e.g., "Sarah", "Alex", "John")
-- emotion: Feeling word (excited, frustrated, curious, worried, happy, etc.)
-- entity_type: Type of thing (project, topic, technology)
-- entity_value: The specific project/topic/tech name
-- context: Folder type (tasks, meetings, ideas, reference, journal)
-- text_query: Remaining keywords for text search (remove extracted filters)
-- sort: Time sorting (recent, oldest) if mentioned
-
-Rules:
-- Only extract what's CLEARLY present
-- For person: Extract proper names only
-- For emotion: Extract feeling words
-- For entity_type + entity_value: Extract specific projects/topics/technologies
-- For context: Match to folder names if mentioned
-- For text_query: Remove extracted filters, keep remaining keywords
-- Use null for missing fields
-
-Examples:
-- "what's the recent project I did with Sarah"
-  → {{"person": "Sarah", "entity_type": "project", "sort": "recent", "text_query": null}}
-
-- "notes where I felt excited about FAISS"
-  → {{"emotion": "excited", "entity_value": "FAISS", "entity_type": "topic", "text_query": null}}
-
-- "meetings about AWS infrastructure"
-  → {{"context": "meetings", "entity_value": "AWS", "entity_type": "tech", "text_query": null, "person": null, "emotion": null}}
-
-- "meetings about FAISS"
-  → {{"context": "meetings", "entity_value": "FAISS", "entity_type": "tech", "text_query": null, "person": null, "emotion": null}}
-
-- "notes about AWS and cloud infrastructure"
-  → {{"entity_value": "AWS", "entity_type": "tech", "text_query": "cloud infrastructure", "person": null, "emotion": null}}
-
-- "what sport did I watch?"
-  → {{"text_query": "sport watch", "person": null, "emotion": null, "entity_type": null}}
-
-Return ONLY JSON:
-{{
-  "person": "name" or null,
-  "emotion": "feeling" or null,
-  "entity_type": "project"/"topic"/"tech" or null,
-  "entity_value": "value" or null,
-  "context": "folder" or null,
-  "text_query": "keywords" or null,
-  "sort": "recent"/"oldest" or null
-}}
-
-JSON:"""
+    llm = get_llm(temperature=0.1, format="json")  # Low temperature for consistent parsing
+    prompt = Prompts.PARSE_SEARCH_QUERY.format(query=natural_query)
 
     try:
         response = await llm.ainvoke(prompt)

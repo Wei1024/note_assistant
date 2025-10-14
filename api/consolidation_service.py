@@ -10,7 +10,8 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from .config import DB_PATH
-from .capture_service import get_llm
+from .llm import get_llm
+from .llm.prompts import Prompts
 from .graph import add_link
 from .notes import get_notes_created_today
 
@@ -355,48 +356,10 @@ async def suggest_links_batch(new_note_text: str, candidates: List[Dict]) -> Lis
         for i, c in enumerate(candidates)
     ])
 
-    prompt = f"""You are a knowledge graph linker. Analyze connections between notes.
-
-NEW NOTE:
-{new_note_text}
-
-EXISTING NOTES:
-{candidates_text}
-
-Task: Which existing notes should link to the new note? Analyze ALL at once.
-
-Link Types:
-- **related**: Discusses same topic/concept
-- **spawned**: New note is follow-up/action from old note
-- **references**: New note builds on old note's idea
-- **contradicts**: New note challenges old note's conclusion
-
-Rules:
-1. Only include if CLEAR connection (shared specific concept/person/project/decision)
-2. Use the "Overlap" statistics as context - higher overlap suggests stronger potential connection
-3. Reason must be specific (not "both mention topics")
-4. Max 5 links total (prioritize strongest)
-5. Must use exact note ID from brackets above
-6. Trust your judgment - if overlap is high but semantic meaning differs, skip it
-
-Return ONLY a JSON array (even if empty or single link):
-
-Examples:
-- Multiple links:
-[
-  {{"id": "2025-01-10T14:30:00-08:00_abc1", "link_type": "spawned", "reason": "New note is action item from this meeting"}},
-  {{"id": "2025-01-09T10:15:00-08:00_def2", "link_type": "references", "reason": "Builds on the memory consolidation research discussed here"}}
-]
-
-- Single link:
-[
-  {{"id": "2025-01-08T09:00:00-08:00_ghi3", "link_type": "related", "reason": "Both discuss Sarah's research on hippocampus function"}}
-]
-
-- No links:
-[]
-
-JSON:"""
+    prompt = Prompts.SUGGEST_LINKS.format(
+        new_note_text=new_note_text,
+        candidates_text=candidates_text
+    )
 
     try:
         response = await llm.ainvoke(prompt)

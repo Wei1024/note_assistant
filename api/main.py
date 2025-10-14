@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
+from .llm import initialize_llm, shutdown_llm
 from .models import (
     ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit, UpdateStatusRequest,
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
@@ -25,6 +26,7 @@ import sqlite3
 async def lifespan(app: FastAPI):
     # Startup
     set_llm_cache(InMemoryCache())
+    await initialize_llm()  # Initialize LLM client
     ensure_db()
     print(f"\n🚀 QuickNote Backend Started")
     print(f"🤖 Using Model: {LLM_MODEL}")
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
     print(f"🔌 Connection Pooling: Enabled (10 keepalive)\n")
     yield
     # Shutdown
+    await shutdown_llm()  # Cleanup LLM client and HTTP connections
     print("\n👋 QuickNote Backend Shutting Down\n")
 
 app = FastAPI(title="QuickNote Backend", version="0.2.0", lifespan=lifespan)

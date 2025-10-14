@@ -4,7 +4,8 @@ Extracts multi-dimensional metadata from classified notes
 """
 import json
 from datetime import datetime
-from .capture_service import get_llm
+from .llm import get_llm
+from .llm.prompts import Prompts
 from .config import WORKING_FOLDERS
 
 
@@ -28,72 +29,8 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
         - emotional_markers: Detected emotions/moods
     """
     llm = get_llm()
-
     primary_folder = primary_classification.get("folder", "journal")
-
-    prompt = f"""You are a metadata extraction agent. Analyze this note and extract multi-dimensional metadata.
-
-Note content: {text}
-
-Primary classification: {primary_folder}
-
-Extract ONLY valid JSON:
-{{
-  "secondary_contexts": ["tasks", "ideas", "reference"],
-  "people": [
-    {{"name": "Sarah", "role": "psychology researcher", "relation": "expert contact"}}
-  ],
-  "topics": ["human memory", "psychology", "note-taking"],
-  "projects": ["note-taking app"],
-  "technologies": ["LLM", "SQLite"],
-  "emotions": ["excited", "curious"],
-  "time_references": [
-    {{"type": "meeting", "datetime": "2025-10-11T15:00:00", "description": "meeting with Sarah"}}
-  ],
-  "reasoning": "Brief explanation of why these entities were extracted"
-}}
-
-**Extraction Guidelines**:
-
-1. **secondary_contexts**: What OTHER cognitive contexts does this note touch?
-   - Primary folder: {primary_folder}
-   - Look for ADDITIONAL contexts beyond primary
-   - Example: A meeting note (primary: meetings) might also be an idea or reference
-   - Only include if truly relevant
-
-2. **people**: Extract person names mentioned
-   - Include role/expertise if mentioned
-   - Include relationship context if clear
-   - Format: {{"name": "...", "role": "...", "relation": "..."}}
-
-3. **topics**: Key concepts, subjects, domains discussed
-   - Specific enough to be useful for search
-   - Examples: "machine learning", "productivity", "SQLite FTS5"
-
-4. **projects**: Named projects or ongoing initiatives
-   - Must be explicitly named or clearly identifiable
-   - Examples: "note-taking app", "website redesign", "Q4 planning"
-
-5. **technologies**: Tools, frameworks, languages, platforms
-   - Only if explicitly mentioned
-   - Examples: "Python", "FastAPI", "Postgres", "Docker"
-
-6. **emotions**: Emotional markers or mood indicators
-   - Look for feeling words: excited, frustrated, anxious, grateful
-   - Only if clearly expressed
-
-7. **time_references**: Dates, times, deadlines, scheduled events
-   - Parse into structured format when possible
-   - Types: meeting, deadline, reminder, event
-   - Include ISO datetime if parseable
-
-**Important**:
-- Only extract entities that are CLEARLY present in the text
-- Don't infer or assume information
-- Empty arrays are fine if nothing found
-- Be conservative - better to miss than hallucinate
-
-JSON:"""
+    prompt = Prompts.ENRICH_METADATA.format(text=text, primary_folder=primary_folder)
 
     try:
         response = await llm.ainvoke(prompt)
