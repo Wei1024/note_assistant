@@ -73,14 +73,14 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
 
 
 def store_enrichment_metadata(note_id: str, enrichment: dict, db_connection):
-    """Store enrichment metadata in database tables using graph.py helpers.
+    """Store enrichment metadata in database tables using repository.
 
     Args:
         note_id: Note ID to associate metadata with
         enrichment: Result from enrich_note_metadata()
         db_connection: SQLite connection object
     """
-    from .graph import index_note_with_enrichment
+    from .repositories import graph_repo
 
-    # Use graph.py helper to batch store all enrichment metadata
-    index_note_with_enrichment(note_id, enrichment, db_connection)
+    # Use repository to batch store all enrichment metadata
+    graph_repo.store_enrichment(note_id, enrichment, db_connection)

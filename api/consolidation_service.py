@@ -12,8 +12,7 @@ from typing import List, Dict, Optional
 from .config import DB_PATH
 from .llm import get_llm
 from .llm.prompts import Prompts
-from .graph import add_link
-from .notes import get_notes_created_today
+from .repositories import graph_repo, notes_repo
 
 
 def _iso_now():
@@ -479,11 +478,11 @@ async def consolidate_note(note_id: str) -> Dict:
     # Suggest links using LLM
     suggested_links = await suggest_links_batch(note["body"], candidates)
 
-    # Store links in database
+    # Store links in database using repository
     links_added = 0
     for link in suggested_links:
         try:
-            add_link(note["id"], link["id"], link["link_type"])
+            graph_repo.add_link(note["id"], link["id"], link["link_type"])
             links_added += 1
         except Exception as e:
             print(f"Error storing link from {note['id']} to {link['id']}: {e}")
@@ -533,6 +532,6 @@ async def consolidate_daily_notes() -> Dict:
     Returns:
         Dict with aggregated consolidation statistics
     """
-    notes = get_notes_created_today()
+    notes = notes_repo.get_created_today()
     note_ids = [note["id"] for note in notes]
     return await consolidate_notes(note_ids)
