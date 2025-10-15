@@ -387,14 +387,19 @@ def find_notes_by_dimension(dimension_type: str, dimension_value: str) -> List[s
 
 
 def find_notes_by_entity(entity_type: str, entity_value: str) -> List[str]:
-    """Find all notes with a specific entity.
+    """Find all notes with a specific entity (fuzzy match).
 
     Args:
         entity_type: Type of entity (person, topic, project, tech)
-        entity_value: Value to search for
+        entity_value: Value to search for (partial match supported)
 
     Returns:
         List of note IDs
+
+    Examples:
+        - "memory" matches "human memory", "memory consolidation"
+        - "psych" matches "psychology", "psychologist"
+        - "FAISS" matches "FAISS" (exact match still works)
     """
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
@@ -402,9 +407,9 @@ def find_notes_by_entity(entity_type: str, entity_value: str) -> List[str]:
     cur.execute(
         """SELECT DISTINCT note_id
            FROM notes_entities
-           WHERE entity_type = ? AND entity_value = ?
+           WHERE entity_type = ? AND entity_value LIKE ?
            ORDER BY created DESC""",
-        (entity_type, entity_value)
+        (entity_type, f"%{entity_value}%")
     )
 
     results = [row[0] for row in cur.fetchall()]

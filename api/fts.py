@@ -182,11 +182,13 @@ def search_notes(query: str, limit: int = 20, status: str = None):
         escaped_query = query.replace('"', '""')
         fts_query = f'"{escaped_query}"'
 
-    # Build SQL query with optional status filter
+    # Build SQL query with optional status filter (include metadata)
     sql = """
         SELECT n.path,
                snippet(notes_fts, 1, '<b>', '</b>', '…', 8) AS snippet,
-               bm25(notes_fts) AS score
+               bm25(notes_fts) AS score,
+               n.folder,
+               n.created
         FROM notes_fts
         JOIN notes_meta n ON n.id = notes_fts.id
         WHERE notes_fts MATCH ?
@@ -203,7 +205,15 @@ def search_notes(query: str, limit: int = 20, status: str = None):
     cur.execute(sql, params)
 
     results = [
-        {"path": row[0], "snippet": row[1], "score": row[2]}
+        {
+            "path": row[0],
+            "snippet": row[1],
+            "score": row[2],
+            "metadata": {
+                "folder": row[3],
+                "created": row[4]
+            }
+        }
         for row in cur.fetchall()
     ]
 

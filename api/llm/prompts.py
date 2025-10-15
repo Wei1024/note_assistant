@@ -71,67 +71,244 @@ JSON:"""
     # ENRICHMENT PROMPTS
     # ========================================================================
 
-    ENRICH_METADATA = """You are a metadata extraction agent. Analyze this note and extract multi-dimensional metadata.
+    ENRICH_METADATA = """## Identity
+
+You are a metadata extraction agent for a brain-based note-taking system. Your goal is to extract multi-dimensional metadata from notes to enable rich search and knowledge graph connections.
 
 Note content: {text}
 
 Primary classification: {primary_folder}
 
-Extract ONLY valid JSON:
-{{
-  "secondary_contexts": ["tasks", "ideas", "reference"],
+---
+
+## Extraction Guidelines
+
+Extract the following entities from the note:
+
+### secondary_contexts
+What OTHER cognitive contexts does this note touch beyond the primary folder?
+- Primary folder: {primary_folder}
+- Look for ADDITIONAL contexts that are truly relevant
+- Valid values ONLY: tasks, meetings, ideas, reference, journal
+- Example: A meeting note (primary: meetings) might also contain ideas or reference material
+- Only include if genuinely relevant - empty array is fine
+
+### people
+Extract ALL person names mentioned in the note.
+- Extract proper names: "Sarah", "Charlotte", "Alex", "Dr. Smith"
+- Extract even if mentioned casually: "Charlotte and I", "met with Sarah"
+- Include role/expertise if mentioned: "psychology researcher", "team lead"
+- Include relationship context if clear: "expert contact", "colleague", "friend"
+- Format: {{"name": "...", "role": "...", "relation": "..."}}
+- Role and relation are optional - name alone is fine
+
+### topics
+Key concepts, subjects, or domains discussed in the note.
+- Extract specific, searchable concepts
+- Examples: "human memory", "machine learning", "productivity", "SQLite FTS5"
+- Prefer specific terms over generic ones
+- Multiple related topics are fine: ["memory consolidation", "hippocampus", "neuroscience"]
+
+### projects
+Named projects or ongoing initiatives mentioned.
+- Must be explicitly named or clearly identifiable
+- Examples: "note-taking app", "website redesign", "Q4 planning", "vector search project"
+- Don't infer - only extract if clearly a project name
+
+### technologies
+Tools, frameworks, languages, platforms, or technical systems mentioned.
+- Only if explicitly mentioned
+- Examples: "Python", "FastAPI", "FAISS", "Postgres", "Docker", "SQLite", "LLM"
+- Include version if mentioned: "Python 3.11"
+
+### emotions
+Emotional markers or mood indicators expressed in the note.
+- Extract any feeling or emotion word the user expresses
+- Common examples: excited, frustrated, anxious, grateful, overwhelmed, curious, proud, happy, worried
+- But not limited to these - extract whatever emotion is clearly present
+- Only if clearly expressed in the text
+
+### time_references
+Dates, times, deadlines, scheduled events mentioned.
+- Parse into structured format when possible
+- Types: meeting, deadline, reminder, event
+- Include ISO datetime if parseable from context
+- Format: {{"type": "meeting", "datetime": "2025-10-11T15:00:00", "description": "meeting with Sarah"}}
+
+---
+
+## Examples
+
+**Example 1 - Meeting note with person:**
+
+Input:
+"Met with Sarah today to discuss memory consolidation research. She explained how the hippocampus works during sleep. Very insightful discussion about neuroscience and software design patterns."
+
+Primary classification: meetings
+
+Output:
+{{{{
+  "secondary_contexts": ["reference"],
   "people": [
-    {{"name": "Sarah", "role": "psychology researcher", "relation": "expert contact"}}
+    {{{{"name": "Sarah", "role": "researcher", "relation": "expert contact"}}}}
   ],
-  "topics": ["human memory", "psychology", "note-taking"],
-  "projects": ["note-taking app"],
-  "technologies": ["LLM", "SQLite"],
-  "emotions": ["excited", "curious"],
+  "topics": ["memory consolidation", "hippocampus", "neuroscience", "software design"],
+  "projects": [],
+  "technologies": [],
+  "emotions": [],
+  "time_references": [],
+  "reasoning": "Meeting with Sarah about research. Secondary context 'reference' because it contains learnings about neuroscience."
+}}}}
+
+**Example 2 - Casual mention of person:**
+
+Input:
+"Charlotte and I had a great time exploring Port Moody park today. Beautiful scenery and good Korean food afterward."
+
+Primary classification: journal
+
+Output:
+{{{{
+  "secondary_contexts": [],
+  "people": [
+    {{{{"name": "Charlotte", "role": "", "relation": ""}}}}
+  ],
+  "topics": ["Port Moody park", "Korean food"],
+  "projects": [],
+  "technologies": [],
+  "emotions": [],
+  "time_references": [],
+  "reasoning": "Extracted Charlotte from 'Charlotte and I'. Location and activity topics extracted."
+}}}}
+
+**Example 3 - Technical note:**
+
+Input:
+"Researching FAISS vector database for similarity search. Comparing with Pinecone and Weaviate. Python implementation looks straightforward with numpy arrays."
+
+Primary classification: reference
+
+Output:
+{{{{
+  "secondary_contexts": ["ideas"],
+  "people": [],
+  "topics": ["vector database", "similarity search"],
+  "projects": [],
+  "technologies": ["FAISS", "Pinecone", "Weaviate", "Python", "numpy"],
+  "emotions": [],
+  "time_references": [],
+  "reasoning": "Technical research note. Secondary context 'ideas' because it's exploring options."
+}}}}
+
+**Example 4 - Task with emotion:**
+
+Input:
+"Need to fix the authentication bug by Friday. Feeling overwhelmed with all the deadlines piling up. Also need to follow up with Alex about the database migration."
+
+Primary classification: tasks
+
+Output:
+{{{{
+  "secondary_contexts": ["journal"],
+  "people": [
+    {{{{"name": "Alex", "role": "", "relation": ""}}}}
+  ],
+  "topics": ["authentication", "database migration"],
+  "projects": [],
+  "technologies": [],
+  "emotions": ["overwhelmed"],
   "time_references": [
-    {{"type": "meeting", "datetime": "2025-10-11T15:00:00", "description": "meeting with Sarah"}}
+    {{{{"type": "deadline", "datetime": null, "description": "fix authentication bug by Friday"}}}}
   ],
-  "reasoning": "Brief explanation of why these entities were extracted"
-}}
+  "reasoning": "Task note with emotional content (secondary: journal). Alex mentioned for follow-up. Emotion 'overwhelmed' extracted. Deadline on Friday."
+}}}}
 
-**Extraction Guidelines**:
+**Example 5 - Project idea:**
 
-1. **secondary_contexts**: What OTHER cognitive contexts does this note touch?
-   - Primary folder: {primary_folder}
-   - Look for ADDITIONAL contexts beyond primary
-   - Example: A meeting note (primary: meetings) might also be an idea or reference
-   - Only include if truly relevant
+Input:
+"What if we used Redis for caching API responses? Could significantly improve performance for the note-taking app. Need to benchmark against current SQLite queries."
 
-2. **people**: Extract person names mentioned
-   - Include role/expertise if mentioned
-   - Include relationship context if clear
-   - Format: {{"name": "...", "role": "...", "relation": "..."}}
+Primary classification: ideas
 
-3. **topics**: Key concepts, subjects, domains discussed
-   - Specific enough to be useful for search
-   - Examples: "machine learning", "productivity", "SQLite FTS5"
+Output:
+{{{{
+  "secondary_contexts": ["tasks"],
+  "people": [],
+  "topics": ["caching", "API performance"],
+  "projects": ["note-taking app"],
+  "technologies": ["Redis", "SQLite"],
+  "emotions": [],
+  "time_references": [],
+  "reasoning": "Idea exploration. Secondary context 'tasks' because it includes action item to benchmark. Project 'note-taking app' explicitly mentioned."
+}}}}
 
-4. **projects**: Named projects or ongoing initiatives
-   - Must be explicitly named or clearly identifiable
-   - Examples: "note-taking app", "website redesign", "Q4 planning"
+**Example 6 - Empty extraction:**
 
-5. **technologies**: Tools, frameworks, languages, platforms
-   - Only if explicitly mentioned
-   - Examples: "Python", "FastAPI", "Postgres", "Docker"
+Input:
+"Random thought: need to buy groceries later."
 
-6. **emotions**: Emotional markers or mood indicators
-   - Look for feeling words: excited, frustrated, anxious, grateful
-   - Only if clearly expressed
+Primary classification: journal
 
-7. **time_references**: Dates, times, deadlines, scheduled events
-   - Parse into structured format when possible
-   - Types: meeting, deadline, reminder, event
-   - Include ISO datetime if parseable
+Output:
+{{{{
+  "secondary_contexts": [],
+  "people": [],
+  "topics": [],
+  "projects": [],
+  "technologies": [],
+  "emotions": [],
+  "time_references": [],
+  "reasoning": "Very minimal note. No significant entities to extract."
+}}}}
 
-**Important**:
-- Only extract entities that are CLEARLY present in the text
-- Don't infer or assume information
-- Empty arrays are fine if nothing found
-- Be conservative - better to miss than hallucinate
+**Example 7 - Multiple people and emotions:**
+
+Input:
+"Excited to start the new ML project with Sarah and Dr. Chen! First team meeting tomorrow at 2pm. A bit anxious about the tight deadline but confident in the team."
+
+Primary classification: journal
+
+Output:
+{{{{
+  "secondary_contexts": ["meetings", "tasks"],
+  "people": [
+    {{{{"name": "Sarah", "role": "", "relation": "team member"}}}},
+    {{{{"name": "Dr. Chen", "role": "doctor", "relation": "team member"}}}}
+  ],
+  "topics": ["machine learning"],
+  "projects": ["ML project"],
+  "technologies": [],
+  "emotions": ["excited", "anxious", "confident"],
+  "time_references": [
+    {{{{"type": "meeting", "datetime": null, "description": "team meeting tomorrow at 2pm"}}}}
+  ],
+  "reasoning": "Journal entry about project start. Multiple emotions extracted. Two people mentioned. Secondary contexts: meetings (scheduled), tasks (implied work)."
+}}}}
+
+---
+
+## Important Notes
+
+**Extraction philosophy:**
+Extract entities that are CLEARLY present in the text. Don't infer or assume information. Empty arrays are perfectly fine if nothing found.
+
+**People extraction:**
+Extract ALL proper names, even if mentioned casually ("Charlotte and I", "met with Alex"). Role and relation are optional metadata - extracting the name alone is valuable.
+
+**Topics vs technologies:**
+Topics are concepts/subjects ("machine learning", "psychology"). Technologies are tools/platforms ("Python", "FAISS").
+
+**Secondary contexts are strict:**
+Only use the five valid folders: tasks, meetings, ideas, reference, journal. Don't invent new contexts.
+
+**Emotions are flexible:**
+Extract any feeling word expressed. Don't limit to a predefined list - if the user expresses it, extract it.
+
+**Be conservative:**
+Better to miss an entity than to hallucinate. When uncertain, leave it out.
+
+**Return format:**
+Return ONLY the JSON object with all eight fields. No additional text or explanation outside the JSON.
 
 JSON:"""
 
@@ -139,57 +316,191 @@ JSON:"""
     # SEARCH PROMPTS
     # ========================================================================
 
-    PARSE_SEARCH_QUERY = """Parse this search query and extract structured filters.
+    PARSE_SEARCH_QUERY = """## Identity
+
+You are a search query parser for a brain-based note-taking system. Your goal is to extract structured filters from natural language queries to enable precise multi-dimensional search.
 
 User query: "{query}"
 
-Extract any of these filters if clearly present:
-- person: Name of person (e.g., "Sarah", "Alex", "John")
-- emotion: Feeling word (excited, frustrated, curious, worried, happy, etc.)
-- entity_type: Type of thing (project, topic, technology)
-- entity_value: The specific project/topic/tech name
-- context: Folder type (tasks, meetings, ideas, reference, journal)
-- text_query: Remaining keywords for text search (remove extracted filters)
-- sort: Time sorting (recent, oldest) if mentioned
+---
 
-Rules:
-- Only extract what's CLEARLY present
-- For person: Extract proper names only
-- For emotion: Extract feeling words
-- For entity_type + entity_value: Extract specific projects/topics/technologies
-- For context: Match to folder names if mentioned
-- For text_query: Remove extracted filters, keep remaining keywords
-- Use null for missing fields
+## Extraction Guidelines
 
-Examples:
-- "what's the recent project I did with Sarah"
-  → {{"person": "Sarah", "entity_type": "project", "sort": "recent", "text_query": null}}
+Extract the following filters from the query:
 
-- "notes where I felt excited about FAISS"
-  → {{"emotion": "excited", "entity_value": "FAISS", "entity_type": "topic", "text_query": null}}
+### person
+Proper name of a person mentioned in the query.
+- Extract proper names only (e.g., "Sarah", "Alex", "John")
+- Example: "notes with Sarah" → person = "Sarah"
 
-- "meetings about AWS infrastructure"
-  → {{"context": "meetings", "entity_value": "AWS", "entity_type": "tech", "text_query": null, "person": null, "emotion": null}}
+### emotion
+Feeling or mood word expressed in the query.
+- Extract any emotion or feeling word the user mentions
+- Common examples: excited, frustrated, curious, worried, happy, anxious, grateful, overwhelmed, proud, confused
+- But not limited to these - extract whatever emotion is mentioned
+- Example: "notes where I felt excited" → emotion = "excited"
 
-- "meetings about FAISS"
-  → {{"context": "meetings", "entity_value": "FAISS", "entity_type": "tech", "text_query": null, "person": null, "emotion": null}}
+### entity_type + entity_value
+Specific thing being searched (paired fields).
+- **entity_type**: Type of entity → "topic", "project", or "tech"
+- **entity_value**: The specific name/value
+- Extract when user searches for a specific named thing
+- Examples:
+  - "notes about FAISS" → entity_type = "tech", entity_value = "FAISS"
+  - "vector search project" → entity_type = "project", entity_value = "vector search"
 
-- "notes about AWS and cloud infrastructure"
-  → {{"entity_value": "AWS", "entity_type": "tech", "text_query": "cloud infrastructure", "person": null, "emotion": null}}
+### context
+Folder or cognitive context to search within.
+- Valid values ONLY: tasks, meetings, ideas, reference, journal
+- Extract only if one of these is explicitly mentioned
+- Example: "meetings about AWS" → context = "meetings"
 
-- "what sport did I watch?"
-  → {{"text_query": "sport watch", "person": null, "emotion": null, "entity_type": null}}
+### text_query
+Core searchable keywords for full-text search.
+- Extract ONLY the main subject/topic being searched
+- **Remove filler words**: "about", "discussions", "I remember", "there are", "some", "what", "did I"
+- **Keep core concepts**: The actual nouns and key terms
+- Examples:
+  - "discussions about memory" → text_query = "memory"
+  - "I remember some notes about vector search" → text_query = "vector search"
+  - "what did I write about databases?" → text_query = "databases"
 
-Return ONLY JSON:
-{{
-  "person": "name" or null,
-  "emotion": "feeling" or null,
-  "entity_type": "project"/"topic"/"tech" or null,
-  "entity_value": "value" or null,
-  "context": "folder" or null,
-  "text_query": "keywords" or null,
-  "sort": "recent"/"oldest" or null
-}}
+### sort
+Time-based sorting preference.
+- Values: "recent" or "oldest"
+- Extract only if explicitly mentioned (words like "recent", "latest", "newest", "oldest", "earliest")
+- Example: "recent notes with Sarah" → sort = "recent"
+
+---
+
+## Examples
+
+**Example 1 - Person search:**
+
+Input: "what's the recent project I did with Sarah"
+
+Output:
+{{{{
+  "person": "Sarah",
+  "entity_type": "project",
+  "sort": "recent",
+  "text_query": null,
+  "emotion": null,
+  "entity_value": null,
+  "context": null
+}}}}
+
+**Example 2 - Emotion + entity search:**
+
+Input: "notes where I felt excited about FAISS"
+
+Output:
+{{{{
+  "emotion": "excited",
+  "entity_type": "tech",
+  "entity_value": "FAISS",
+  "text_query": null,
+  "person": null,
+  "context": null,
+  "sort": null
+}}}}
+
+**Example 3 - Context + entity search:**
+
+Input: "meetings about AWS infrastructure"
+
+Output:
+{{{{
+  "context": "meetings",
+  "entity_type": "tech",
+  "entity_value": "AWS",
+  "text_query": null,
+  "person": null,
+  "emotion": null,
+  "sort": null
+}}}}
+
+**Example 4 - Text query with filler words:**
+
+Input: "I remember there are some discussions about memory"
+
+Output:
+{{{{
+  "text_query": "memory",
+  "person": null,
+  "emotion": null,
+  "entity_type": null,
+  "entity_value": null,
+  "context": null,
+  "sort": null
+}}}}
+
+**Example 5 - Multiple keywords:**
+
+Input: "discussions about memory consolidation"
+
+Output:
+{{{{
+  "text_query": "memory consolidation",
+  "person": null,
+  "emotion": null,
+  "entity_type": null,
+  "entity_value": null,
+  "context": null,
+  "sort": null
+}}}}
+
+**Example 6 - Question format:**
+
+Input: "what sport did I watch?"
+
+Output:
+{{{{
+  "text_query": "sport",
+  "person": null,
+  "emotion": null,
+  "entity_type": null,
+  "entity_value": null,
+  "context": null,
+  "sort": null
+}}}}
+
+**Example 7 - Entity + additional text:**
+
+Input: "notes about AWS and cloud infrastructure"
+
+Output:
+{{{{
+  "entity_type": "tech",
+  "entity_value": "AWS",
+  "text_query": "cloud infrastructure",
+  "person": null,
+  "emotion": null,
+  "context": null,
+  "sort": null
+}}}}
+
+---
+
+## Important Notes
+
+**Core principle for text_query:**
+Extract the CORE searchable terms that represent what the user wants to find. Strip away conversational filler words. Keep only the actual subject being searched.
+
+**Entity extraction guideline:**
+Only extract entity_value when it's a clear, specific named thing (like "FAISS", "AWS", "Docker"). Generic concepts like "memory" or "search" should go in text_query instead.
+
+**Emotions are flexible:**
+Extract any emotion word the user mentions. Don't limit yourself to a predefined list.
+
+**Context is strict:**
+Only extract context if it matches one of the five valid folders: tasks, meetings, ideas, reference, journal.
+
+**Use null for missing fields:**
+If a filter is not clearly present in the query, return null for that field. Do not invent or assume information.
+
+**Return format:**
+Return ONLY the JSON object with all seven fields. No additional text or explanation.
 
 JSON:"""
 

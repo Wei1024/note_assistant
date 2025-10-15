@@ -409,4 +409,15 @@ async def get_note_graph(note_id: str, depth: int = 2):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=BACKEND_HOST, port=BACKEND_PORT)
+    import os
+
+    # Enable auto-reload in development
+    reload = os.getenv("ENV", "development") == "development"
+
+    uvicorn.run(
+        "api.main:app",  # Pass as import string for reload to work
+        host=BACKEND_HOST,
+        port=BACKEND_PORT,
+        reload=reload,  # Auto-reload on file changes
+        reload_dirs=["api"] if reload else None  # Watch api directory
+    )
