@@ -23,10 +23,12 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
 
     Returns:
         Dictionary with:
-        - dimensions: List of secondary contexts
-        - entities: Dict of people, topics, projects, technologies
-        - suggested_links: List of note IDs that might be related
-        - emotional_markers: Detected emotions/moods
+        - secondary_contexts: List of additional cognitive contexts
+        - people: List of person names/objects mentioned
+        - entities: List of concepts, tools, projects, topics (merged)
+        - emotions: List of emotional markers
+        - time_references: List of dates, deadlines, events
+        - reasoning: Brief explanation of extraction
     """
     llm = get_llm()
     primary_folder = primary_classification.get("folder", "journal")
@@ -48,9 +50,7 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
 
         # Ensure all arrays exist
         result.setdefault("people", [])
-        result.setdefault("topics", [])
-        result.setdefault("projects", [])
-        result.setdefault("technologies", [])
+        result.setdefault("entities", [])
         result.setdefault("emotions", [])
         result.setdefault("time_references", [])
         result.setdefault("reasoning", "")
@@ -62,9 +62,7 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
         return {
             "secondary_contexts": [],
             "people": [],
-            "topics": [],
-            "projects": [],
-            "technologies": [],
+            "entities": [],
             "emotions": [],
             "time_references": [],
             "reasoning": f"Enrichment failed: {str(e)}",

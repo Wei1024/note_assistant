@@ -41,12 +41,10 @@ def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: s
     Returns:
         {
             "shared_people": ["Sarah", "Alex"],
-            "shared_topics": ["memory", "consolidation"],
-            "shared_projects": ["note-taking app"],
+            "shared_entities": ["memory", "consolidation", "note-taking app"],
             "shared_tags": ["research"],
             "people_count": 2,
-            "topics_count": 2,
-            "projects_count": 1,
+            "entities_count": 3,
             "tags_count": 1,
             "total": 6
         }
@@ -64,8 +62,7 @@ def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: s
 
     # Get note's entities
     note_people = {e[1] for e in note.get("entities", []) if e[0] == "person"}
-    note_topics = {e[1] for e in note.get("entities", []) if e[0] == "topic"}
-    note_projects = {e[1] for e in note.get("entities", []) if e[0] == "project"}
+    note_entities = {e[1] for e in note.get("entities", []) if e[0] == "entity"}
 
     # Get note's tags (use cached if provided)
     if note_tags is None:
@@ -86,8 +83,7 @@ def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: s
     candidate_entities = cur.fetchall()
 
     candidate_people = {e[1] for e in candidate_entities if e[0] == "person"}
-    candidate_topics = {e[1] for e in candidate_entities if e[0] == "topic"}
-    candidate_projects = {e[1] for e in candidate_entities if e[0] == "project"}
+    candidate_entities_set = {e[1] for e in candidate_entities if e[0] == "entity"}
 
     # Get candidate's tags
     candidate_tags = set()
@@ -107,20 +103,17 @@ def calculate_candidate_overlap(note: Dict, candidate_id: str, candidate_path: s
 
     # Calculate overlaps
     shared_people = list(note_people & candidate_people)
-    shared_topics = list(note_topics & candidate_topics)
-    shared_projects = list(note_projects & candidate_projects)
+    shared_entities = list(note_entities & candidate_entities_set)
     shared_tags = list(note_tags & candidate_tags)
 
     overlap = {
         "shared_people": shared_people,
-        "shared_topics": shared_topics,
-        "shared_projects": shared_projects,
+        "shared_entities": shared_entities,
         "shared_tags": shared_tags,
         "people_count": len(shared_people),
-        "topics_count": len(shared_topics),
-        "projects_count": len(shared_projects),
+        "entities_count": len(shared_entities),
         "tags_count": len(shared_tags),
-        "total": len(shared_people) + len(shared_topics) + len(shared_projects) + len(shared_tags)
+        "total": len(shared_people) + len(shared_entities) + len(shared_tags)
     }
 
     return overlap
@@ -173,50 +166,27 @@ def find_link_candidates(note: Dict, max_candidates: int = 10,
                     "match_reason": f"mentions {person}"
                 }
 
-    # Search by topics
-    topics = [e[1] for e in note.get("entities", []) if e[0] == "topic"]
-    for topic in topics[:3]:  # Limit to top 3 topics
+    # Search by entities
+    entities = [e[1] for e in note.get("entities", []) if e[0] == "entity"]
+    for entity in entities[:3]:  # Limit to top 3 entities
         cur.execute(f"""
             SELECT DISTINCT m.id, m.path
             FROM notes_entities e
             JOIN notes_meta m ON m.id = e.note_id
-            WHERE e.entity_type = 'topic'
+            WHERE e.entity_type = 'entity'
               AND e.entity_value = ?
               AND e.note_id != ?
               {date_filter}
             ORDER BY m.created DESC
             LIMIT 3
-        """, (topic, note["id"]))
+        """, (entity, note["id"]))
 
         for row in cur.fetchall():
             if row[0] not in candidates:
                 candidates[row[0]] = {
                     "id": row[0],
                     "path": row[1],
-                    "match_reason": f"discusses {topic}"
-                }
-
-    # Search by projects
-    projects = [e[1] for e in note.get("entities", []) if e[0] == "project"]
-    for project in projects:
-        cur.execute(f"""
-            SELECT DISTINCT m.id, m.path
-            FROM notes_entities e
-            JOIN notes_meta m ON m.id = e.note_id
-            WHERE e.entity_type = 'project'
-              AND e.entity_value = ?
-              AND e.note_id != ?
-              {date_filter}
-            ORDER BY m.created DESC
-            LIMIT 3
-        """, (project, note["id"]))
-
-        for row in cur.fetchall():
-            if row[0] not in candidates:
-                candidates[row[0]] = {
-                    "id": row[0],
-                    "path": row[1],
-                    "match_reason": f"related to {project}"
+                    "match_reason": f"mentions {entity}"
                 }
 
     # Search by tags (Phase 2.3b enhancement)
@@ -350,8 +320,8 @@ async def suggest_links_batch(new_note_text: str, candidates: List[Dict]) -> Lis
         f"   Snippet: {c['snippet']}\n"
         f"   Match: {c['match_reason']}\n"
         f"   Overlap: {c['overlap']['total']} shared dimensions "
-        f"({c['overlap']['people_count']} people, {c['overlap']['topics_count']} topics, "
-        f"{c['overlap']['projects_count']} projects, {c['overlap']['tags_count']} tags)"
+        f"({c['overlap']['people_count']} people, {c['overlap']['entities_count']} entities, "
+        f"{c['overlap']['tags_count']} tags)"
         for i, c in enumerate(candidates)
     ])
 

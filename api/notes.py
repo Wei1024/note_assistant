@@ -40,9 +40,7 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         enrichment: Optional dict from enrich_note_metadata() with:
             - secondary_contexts: List[str]
             - people: List[dict]
-            - topics: List[str]
-            - projects: List[str]
-            - technologies: List[str]
+            - entities: List[str]
             - emotions: List[str]
             - time_references: List[dict]
 
@@ -113,17 +111,9 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
                 for p in people
             ]
 
-        topics = enrichment.get("topics", [])
-        if topics:
-            entities["topics"] = topics
-
-        projects = enrichment.get("projects", [])
-        if projects:
-            entities["projects"] = projects
-
-        technologies = enrichment.get("technologies", [])
-        if technologies:
-            entities["technologies"] = technologies
+        all_entities = enrichment.get("entities", [])
+        if all_entities:
+            entities["entities"] = all_entities
 
         if entities:
             front["entities"] = entities

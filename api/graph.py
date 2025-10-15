@@ -115,9 +115,7 @@ def index_note_with_enrichment(note_id: str, enrichment: dict, db_connection=Non
         enrichment: Dict from enrich_note_metadata() containing:
             - secondary_contexts: List[str]
             - people: List[dict] or List[str]
-            - topics: List[str]
-            - projects: List[str]
-            - technologies: List[str]
+            - entities: List[str]
             - emotions: List[str]
             - time_references: List[dict] or List[str]
         db_connection: SQLite connection (or creates new one)
@@ -165,17 +163,9 @@ def index_note_with_enrichment(note_id: str, enrichment: dict, db_connection=Non
                 metadata = None
             add_entity(note_id, "person", name, metadata, db_connection=db_connection)
 
-        # Store topics as entities
-        for topic in enrichment.get("topics", []):
-            add_entity(note_id, "topic", topic, db_connection=db_connection)
-
-        # Store projects as entities
-        for project in enrichment.get("projects", []):
-            add_entity(note_id, "project", project, db_connection=db_connection)
-
-        # Store technologies as entities
-        for tech in enrichment.get("technologies", []):
-            add_entity(note_id, "tech", tech, db_connection=db_connection)
+        # Store entities (merged topics/projects/technologies)
+        for entity in enrichment.get("entities", []):
+            add_entity(note_id, "entity", entity, db_connection=db_connection)
 
         db_connection.commit()
 

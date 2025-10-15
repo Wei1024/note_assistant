@@ -121,17 +121,16 @@ class TestEnrichmentFlow:
 
     @pytest.mark.asyncio
     async def test_enrich_extracts_topics(self):
-        """Test topic extraction"""
+        """Test entity extraction (merged topics/projects/tech)"""
         text = "Researching FAISS vector database for similarity search"
         classification = {"folder": "reference", "title": "FAISS research", "tags": []}
 
         enrichment = await enrich_note_metadata(text, classification)
 
         # LLM extraction varies - just verify structure exists
-        assert "topics" in enrichment
-        assert "technologies" in enrichment
+        assert "entities" in enrichment
         # At least the enrichment ran successfully
-        assert "reasoning" in enrichment or "topics" in enrichment
+        assert "reasoning" in enrichment or "entities" in enrichment
 
     @pytest.mark.asyncio
     async def test_enrich_extracts_emotions(self):
@@ -165,7 +164,7 @@ class TestSearchFlow:
         filters = await parse_smart_query(query)
 
         assert filters.get("emotion") in ["excited", "Excited"]
-        assert "FAISS" in str(filters.get("entity_value", "")) or "FAISS" in str(filters.get("text_query", ""))
+        assert "FAISS" in str(filters.get("entity", "")) or "FAISS" in str(filters.get("text_query", ""))
 
     @pytest.mark.asyncio
     async def test_parse_context_query(self):
@@ -174,7 +173,7 @@ class TestSearchFlow:
         filters = await parse_smart_query(query)
 
         assert filters.get("context") == "meetings"
-        assert "AWS" in str(filters.get("entity_value", "")) or "AWS" in str(filters.get("text_query", ""))
+        assert "AWS" in str(filters.get("entity", "")) or "AWS" in str(filters.get("text_query", ""))
 
 
 class TestConsolidationFlow:
@@ -223,7 +222,7 @@ class TestIntegration:
 
         # Step 2: Enrich
         enrichment = await enrich_note_metadata(text, classification)
-        assert "topics" in enrichment or "projects" in enrichment
+        assert "entities" in enrichment
 
         # Step 3: Save (would write to disk in real scenario)
         # Simplified - just verify write_markdown doesn't crash

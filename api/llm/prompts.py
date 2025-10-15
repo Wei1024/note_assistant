@@ -102,24 +102,14 @@ Extract ALL person names mentioned in the note.
 - Format: {{"name": "...", "role": "...", "relation": "..."}}
 - Role and relation are optional - name alone is fine
 
-### topics
-Key concepts, subjects, or domains discussed in the note.
-- Extract specific, searchable concepts
-- Examples: "human memory", "machine learning", "productivity", "SQLite FTS5"
+### entities
+All notable things mentioned: concepts, tools, projects, topics, technologies.
+- Extract specific, searchable items without categorizing them
+- Examples: "human memory", "FAISS", "note-taking app", "SQLite FTS5", "Python"
+- Include any named thing: concepts, tools, frameworks, projects, topics, technical systems
 - Prefer specific terms over generic ones
-- Multiple related topics are fine: ["memory consolidation", "hippocampus", "neuroscience"]
-
-### projects
-Named projects or ongoing initiatives mentioned.
-- Must be explicitly named or clearly identifiable
-- Examples: "note-taking app", "website redesign", "Q4 planning", "vector search project"
-- Don't infer - only extract if clearly a project name
-
-### technologies
-Tools, frameworks, languages, platforms, or technical systems mentioned.
-- Only if explicitly mentioned
-- Examples: "Python", "FastAPI", "FAISS", "Postgres", "Docker", "SQLite", "LLM"
-- Include version if mentioned: "Python 3.11"
+- Multiple related entities are fine: ["memory consolidation", "hippocampus", "neuroscience", "Python"]
+- Don't categorize - just extract what's clearly present
 
 ### emotions
 Emotional markers or mood indicators expressed in the note.
@@ -152,9 +142,7 @@ Output:
   "people": [
     {{{{"name": "Sarah", "role": "researcher", "relation": "expert contact"}}}}
   ],
-  "topics": ["memory consolidation", "hippocampus", "neuroscience", "software design"],
-  "projects": [],
-  "technologies": [],
+  "entities": ["memory consolidation", "hippocampus", "neuroscience", "software design"],
   "emotions": [],
   "time_references": [],
   "reasoning": "Meeting with Sarah about research. Secondary context 'reference' because it contains learnings about neuroscience."
@@ -173,12 +161,10 @@ Output:
   "people": [
     {{{{"name": "Charlotte", "role": "", "relation": ""}}}}
   ],
-  "topics": ["Port Moody park", "Korean food"],
-  "projects": [],
-  "technologies": [],
+  "entities": ["Port Moody park", "Korean food"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Extracted Charlotte from 'Charlotte and I'. Location and activity topics extracted."
+  "reasoning": "Extracted Charlotte from 'Charlotte and I'. Location and activity entities extracted."
 }}}}
 
 **Example 3 - Technical note:**
@@ -192,9 +178,7 @@ Output:
 {{{{
   "secondary_contexts": ["ideas"],
   "people": [],
-  "topics": ["vector database", "similarity search"],
-  "projects": [],
-  "technologies": ["FAISS", "Pinecone", "Weaviate", "Python", "numpy"],
+  "entities": ["FAISS", "Pinecone", "Weaviate", "Python", "numpy", "vector database", "similarity search"],
   "emotions": [],
   "time_references": [],
   "reasoning": "Technical research note. Secondary context 'ideas' because it's exploring options."
@@ -213,9 +197,7 @@ Output:
   "people": [
     {{{{"name": "Alex", "role": "", "relation": ""}}}}
   ],
-  "topics": ["authentication", "database migration"],
-  "projects": [],
-  "technologies": [],
+  "entities": ["authentication", "database migration"],
   "emotions": ["overwhelmed"],
   "time_references": [
     {{{{"type": "deadline", "datetime": null, "description": "fix authentication bug by Friday"}}}}
@@ -234,12 +216,10 @@ Output:
 {{{{
   "secondary_contexts": ["tasks"],
   "people": [],
-  "topics": ["caching", "API performance"],
-  "projects": ["note-taking app"],
-  "technologies": ["Redis", "SQLite"],
+  "entities": ["Redis", "SQLite", "caching", "API performance", "note-taking app"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Idea exploration. Secondary context 'tasks' because it includes action item to benchmark. Project 'note-taking app' explicitly mentioned."
+  "reasoning": "Idea exploration. Secondary context 'tasks' because it includes action item to benchmark."
 }}}}
 
 **Example 6 - Empty extraction:**
@@ -253,9 +233,7 @@ Output:
 {{{{
   "secondary_contexts": [],
   "people": [],
-  "topics": [],
-  "projects": [],
-  "technologies": [],
+  "entities": [],
   "emotions": [],
   "time_references": [],
   "reasoning": "Very minimal note. No significant entities to extract."
@@ -275,9 +253,7 @@ Output:
     {{{{"name": "Sarah", "role": "", "relation": "team member"}}}},
     {{{{"name": "Dr. Chen", "role": "doctor", "relation": "team member"}}}}
   ],
-  "topics": ["machine learning"],
-  "projects": ["ML project"],
-  "technologies": [],
+  "entities": ["machine learning", "ML project"],
   "emotions": ["excited", "anxious", "confident"],
   "time_references": [
     {{{{"type": "meeting", "datetime": null, "description": "team meeting tomorrow at 2pm"}}}}
@@ -295,8 +271,8 @@ Extract entities that are CLEARLY present in the text. Don't infer or assume inf
 **People extraction:**
 Extract ALL proper names, even if mentioned casually ("Charlotte and I", "met with Alex"). Role and relation are optional metadata - extracting the name alone is valuable.
 
-**Topics vs technologies:**
-Topics are concepts/subjects ("machine learning", "psychology"). Technologies are tools/platforms ("Python", "FAISS").
+**Entities are flexible:**
+No need to categorize entities as topic/tech/project. Just extract what's clearly present: concepts, tools, projects, topics - all go in the same entities array.
 
 **Secondary contexts are strict:**
 Only use the five valid folders: tasks, meetings, ideas, reference, journal. Don't invent new contexts.
@@ -308,7 +284,7 @@ Extract any feeling word expressed. Don't limit to a predefined list - if the us
 Better to miss an entity than to hallucinate. When uncertain, leave it out.
 
 **Return format:**
-Return ONLY the JSON object with all eight fields. No additional text or explanation outside the JSON.
+Return ONLY the JSON object with all six fields (secondary_contexts, people, entities, emotions, time_references, reasoning). No additional text or explanation outside the JSON.
 
 JSON:"""
 
@@ -340,14 +316,13 @@ Feeling or mood word expressed in the query.
 - But not limited to these - extract whatever emotion is mentioned
 - Example: "notes where I felt excited" → emotion = "excited"
 
-### entity_type + entity_value
-Specific thing being searched (paired fields).
-- **entity_type**: Type of entity → "topic", "project", or "tech"
-- **entity_value**: The specific name/value
-- Extract when user searches for a specific named thing
+### entity
+Specific named thing being searched.
+- Extract when user searches for a specific tool, concept, project, or topic
 - Examples:
-  - "notes about FAISS" → entity_type = "tech", entity_value = "FAISS"
-  - "vector search project" → entity_type = "project", entity_value = "vector search"
+  - "notes about FAISS" → entity = "FAISS"
+  - "vector search project" → entity = "vector search"
+  - "notes about Python" → entity = "Python"
 
 ### context
 Folder or cognitive context to search within.
@@ -382,11 +357,10 @@ Input: "what's the recent project I did with Sarah"
 Output:
 {{{{
   "person": "Sarah",
-  "entity_type": "project",
+  "entity": "project",
   "sort": "recent",
   "text_query": null,
   "emotion": null,
-  "entity_value": null,
   "context": null
 }}}}
 
@@ -397,8 +371,7 @@ Input: "notes where I felt excited about FAISS"
 Output:
 {{{{
   "emotion": "excited",
-  "entity_type": "tech",
-  "entity_value": "FAISS",
+  "entity": "FAISS",
   "text_query": null,
   "person": null,
   "context": null,
@@ -412,8 +385,7 @@ Input: "meetings about AWS infrastructure"
 Output:
 {{{{
   "context": "meetings",
-  "entity_type": "tech",
-  "entity_value": "AWS",
+  "entity": "AWS",
   "text_query": null,
   "person": null,
   "emotion": null,
@@ -429,8 +401,7 @@ Output:
   "text_query": "memory",
   "person": null,
   "emotion": null,
-  "entity_type": null,
-  "entity_value": null,
+  "entity": null,
   "context": null,
   "sort": null
 }}}}
@@ -444,8 +415,7 @@ Output:
   "text_query": "memory consolidation",
   "person": null,
   "emotion": null,
-  "entity_type": null,
-  "entity_value": null,
+  "entity": null,
   "context": null,
   "sort": null
 }}}}
@@ -459,8 +429,7 @@ Output:
   "text_query": "sport",
   "person": null,
   "emotion": null,
-  "entity_type": null,
-  "entity_value": null,
+  "entity": null,
   "context": null,
   "sort": null
 }}}}
@@ -471,8 +440,7 @@ Input: "notes about AWS and cloud infrastructure"
 
 Output:
 {{{{
-  "entity_type": "tech",
-  "entity_value": "AWS",
+  "entity": "AWS",
   "text_query": "cloud infrastructure",
   "person": null,
   "emotion": null,
@@ -488,7 +456,7 @@ Output:
 Extract the CORE searchable terms that represent what the user wants to find. Strip away conversational filler words. Keep only the actual subject being searched.
 
 **Entity extraction guideline:**
-Only extract entity_value when it's a clear, specific named thing (like "FAISS", "AWS", "Docker"). Generic concepts like "memory" or "search" should go in text_query instead.
+Only extract entity when it's a clear, specific named thing (like "FAISS", "AWS", "Docker"). Generic concepts like "memory" or "search" should go in text_query instead.
 
 **Emotions are flexible:**
 Extract any emotion word the user mentions. Don't limit yourself to a predefined list.
@@ -500,7 +468,7 @@ Only extract context if it matches one of the five valid folders: tasks, meeting
 If a filter is not clearly present in the query, return null for that field. Do not invent or assume information.
 
 **Return format:**
-Return ONLY the JSON object with all seven fields. No additional text or explanation.
+Return ONLY the JSON object with all six fields (person, emotion, entity, context, text_query, sort). No additional text or explanation.
 
 JSON:"""
 

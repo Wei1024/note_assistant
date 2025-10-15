@@ -93,8 +93,7 @@ async def parse_smart_query(natural_query: str) -> dict:
     Single LLM call that extracts:
     - person: Name of person to filter by
     - emotion: Emotion dimension (excited, frustrated, curious, etc.)
-    - entity_type: Type of entity (project, topic, tech)
-    - entity_value: Value of the entity
+    - entity: Specific named thing (tool, concept, project, topic)
     - context: Folder filter (tasks, meetings, ideas, reference, journal)
     - text_query: Remaining keywords for FTS5 search
     - sort: Sort order (recent, oldest)
@@ -117,8 +116,7 @@ async def parse_smart_query(natural_query: str) -> dict:
         return {
             "person": None,
             "emotion": None,
-            "entity_type": None,
-            "entity_value": None,
+            "entity": None,
             "context": None,
             "text_query": natural_query,
             "sort": None
@@ -167,14 +165,13 @@ async def search_notes_smart(natural_query: str, limit: int = 10, status: str = 
 
         # Note: Emotions don't have context filtering, so no fallback needed
 
-    elif filters.get("entity_value"):
-        # Search by entity (topic, project, tech)
-        entity_type = filters.get("entity_type") or "topic"  # Default to topic
-        results = search_by_entity(entity_type, filters["entity_value"], context=filters.get("context"), limit=limit)
+    elif filters.get("entity"):
+        # Search by entity (generic type)
+        results = search_by_entity("entity", filters["entity"], context=filters.get("context"), limit=limit)
 
         # Fallback: If no results and context was specified, try without context
         if len(results) == 0 and filters.get("context"):
-            results = search_by_entity(entity_type, filters["entity_value"], context=None, limit=limit)
+            results = search_by_entity("entity", filters["entity"], context=None, limit=limit)
             relaxed_search = True
 
     elif filters.get("text_query"):
