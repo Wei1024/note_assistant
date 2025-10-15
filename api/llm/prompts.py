@@ -83,15 +83,36 @@ Primary classification: {primary_folder}
 
 ## Extraction Guidelines
 
-Extract the following entities from the note:
+First, extract boolean dimensions that describe the note's nature:
 
-### secondary_contexts
-What OTHER cognitive contexts does this note touch beyond the primary folder?
-- Primary folder: {primary_folder}
-- Look for ADDITIONAL contexts that are truly relevant
-- Valid values ONLY: tasks, meetings, ideas, reference, journal
-- Example: A meeting note (primary: meetings) might also contain ideas or reference material
-- Only include if genuinely relevant - empty array is fine
+### Boolean Dimensions
+
+**has_action_items**
+- Does this note contain actionable todos, tasks, or deadlines?
+- True if: "Need to...", "TODO:", deadlines, action items
+- False if: pure reflection, discussion, learning
+
+**is_social**
+- Does this note involve conversations with other people?
+- True if: meetings, discussions, "met with X", "talked to Y"
+- False if: solo work, personal thoughts
+
+**is_emotional**
+- Does this note express feelings or emotions?
+- True if: feeling words, emotional processing, reflections on mood
+- False if: purely factual, no emotional content
+
+**is_knowledge**
+- Does this note contain learnings, how-tos, or reference material?
+- True if: explanations, tutorials, "learned that...", "how to..."
+- False if: just actions or feelings without learnings
+
+**is_exploratory**
+- Does this note contain brainstorming or "what if" thinking?
+- True if: ideas, hypotheses, explorations, possibilities
+- False if: concrete actions or facts
+
+Then, extract entities from the note:
 
 ### people
 Extract ALL person names mentioned in the note.
@@ -138,14 +159,18 @@ Primary classification: meetings
 
 Output:
 {{{{
-  "secondary_contexts": ["reference"],
+  "has_action_items": false,
+  "is_social": true,
+  "is_emotional": false,
+  "is_knowledge": true,
+  "is_exploratory": false,
   "people": [
     {{{{"name": "Sarah", "role": "researcher", "relation": "expert contact"}}}}
   ],
   "entities": ["memory consolidation", "hippocampus", "neuroscience", "software design"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Meeting with Sarah about research. Secondary context 'reference' because it contains learnings about neuroscience."
+  "reasoning": "Meeting with Sarah (is_social=true). Contains learnings about neuroscience (is_knowledge=true). No action items, no emotional content, not exploratory."
 }}}}
 
 **Example 2 - Casual mention of person:**
@@ -157,14 +182,18 @@ Primary classification: journal
 
 Output:
 {{{{
-  "secondary_contexts": [],
+  "has_action_items": false,
+  "is_social": true,
+  "is_emotional": false,
+  "is_knowledge": false,
+  "is_exploratory": false,
   "people": [
     {{{{"name": "Charlotte", "role": "", "relation": ""}}}}
   ],
   "entities": ["Port Moody park", "Korean food"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Extracted Charlotte from 'Charlotte and I'. Location and activity entities extracted."
+  "reasoning": "Social activity with Charlotte (is_social=true). Simple journal entry, no other dimensions active."
 }}}}
 
 **Example 3 - Technical note:**
@@ -176,12 +205,16 @@ Primary classification: reference
 
 Output:
 {{{{
-  "secondary_contexts": ["ideas"],
+  "has_action_items": false,
+  "is_social": false,
+  "is_emotional": false,
+  "is_knowledge": true,
+  "is_exploratory": true,
   "people": [],
   "entities": ["FAISS", "Pinecone", "Weaviate", "Python", "numpy", "vector database", "similarity search"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Technical research note. Secondary context 'ideas' because it's exploring options."
+  "reasoning": "Research note comparing vector databases (is_knowledge=true). Exploring different options (is_exploratory=true)."
 }}}}
 
 **Example 4 - Task with emotion:**
@@ -193,7 +226,11 @@ Primary classification: tasks
 
 Output:
 {{{{
-  "secondary_contexts": ["journal"],
+  "has_action_items": true,
+  "is_social": false,
+  "is_emotional": true,
+  "is_knowledge": false,
+  "is_exploratory": false,
   "people": [
     {{{{"name": "Alex", "role": "", "relation": ""}}}}
   ],
@@ -202,7 +239,7 @@ Output:
   "time_references": [
     {{{{"type": "deadline", "datetime": null, "description": "fix authentication bug by Friday"}}}}
   ],
-  "reasoning": "Task note with emotional content (secondary: journal). Alex mentioned for follow-up. Emotion 'overwhelmed' extracted. Deadline on Friday."
+  "reasoning": "Task with deadlines (has_action_items=true). Expresses feeling overwhelmed (is_emotional=true). Mentions Alex for follow-up."
 }}}}
 
 **Example 5 - Project idea:**
@@ -214,12 +251,16 @@ Primary classification: ideas
 
 Output:
 {{{{
-  "secondary_contexts": ["tasks"],
+  "has_action_items": true,
+  "is_social": false,
+  "is_emotional": false,
+  "is_knowledge": false,
+  "is_exploratory": true,
   "people": [],
   "entities": ["Redis", "SQLite", "caching", "API performance", "note-taking app"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Idea exploration. Secondary context 'tasks' because it includes action item to benchmark."
+  "reasoning": "Brainstorming idea (is_exploratory=true). Includes action item to benchmark (has_action_items=true)."
 }}}}
 
 **Example 6 - Empty extraction:**
@@ -231,12 +272,16 @@ Primary classification: journal
 
 Output:
 {{{{
-  "secondary_contexts": [],
+  "has_action_items": true,
+  "is_social": false,
+  "is_emotional": false,
+  "is_knowledge": false,
+  "is_exploratory": false,
   "people": [],
   "entities": [],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Very minimal note. No significant entities to extract."
+  "reasoning": "Simple action item (has_action_items=true). No other dimensions active."
 }}}}
 
 **Example 7 - Multiple people and emotions:**
@@ -248,7 +293,11 @@ Primary classification: journal
 
 Output:
 {{{{
-  "secondary_contexts": ["meetings", "tasks"],
+  "has_action_items": false,
+  "is_social": true,
+  "is_emotional": true,
+  "is_knowledge": false,
+  "is_exploratory": false,
   "people": [
     {{{{"name": "Sarah", "role": "", "relation": "team member"}}}},
     {{{{"name": "Dr. Chen", "role": "doctor", "relation": "team member"}}}}
@@ -258,7 +307,7 @@ Output:
   "time_references": [
     {{{{"type": "meeting", "datetime": null, "description": "team meeting tomorrow at 2pm"}}}}
   ],
-  "reasoning": "Journal entry about project start. Multiple emotions extracted. Two people mentioned. Secondary contexts: meetings (scheduled), tasks (implied work)."
+  "reasoning": "Team meeting scheduled (is_social=true). Strong emotional content: excited, anxious, confident (is_emotional=true). Not exploratory or knowledge-focused."
 }}}}
 
 ---
@@ -274,8 +323,8 @@ Extract ALL proper names, even if mentioned casually ("Charlotte and I", "met wi
 **Entities are flexible:**
 No need to categorize entities as topic/tech/project. Just extract what's clearly present: concepts, tools, projects, topics - all go in the same entities array.
 
-**Secondary contexts are strict:**
-Only use the five valid folders: tasks, meetings, ideas, reference, journal. Don't invent new contexts.
+**Boolean dimensions are independent:**
+Multiple dimensions can be true simultaneously. A note can be social AND emotional AND have action items. This is the power of multi-dimensional classification.
 
 **Emotions are flexible:**
 Extract any feeling word expressed. Don't limit to a predefined list - if the user expresses it, extract it.
@@ -284,7 +333,12 @@ Extract any feeling word expressed. Don't limit to a predefined list - if the us
 Better to miss an entity than to hallucinate. When uncertain, leave it out.
 
 **Return format:**
-Return ONLY the JSON object with all six fields (secondary_contexts, people, entities, emotions, time_references, reasoning). No additional text or explanation outside the JSON.
+Return ONLY the JSON object with all fields:
+- 5 boolean dimensions (has_action_items, is_social, is_emotional, is_knowledge, is_exploratory)
+- people, entities, emotions, time_references arrays
+- reasoning string
+
+No additional text or explanation outside the JSON.
 
 JSON:"""
 

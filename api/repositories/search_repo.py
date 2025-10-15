@@ -24,7 +24,10 @@ class SearchRepository:
 
     def index_note(self, note_id: str, title: str, body: str, tags: list,
                   folder: str, path: str, created: str, status: str = None,
-                  needs_review: bool = False, review_reason: str = None):
+                  needs_review: bool = False, review_reason: str = None,
+                  has_action_items: bool = False, is_social: bool = False,
+                  is_emotional: bool = False, is_knowledge: bool = False,
+                  is_exploratory: bool = False):
         """Add or update note in FTS5 index
 
         Args:
@@ -38,8 +41,14 @@ class SearchRepository:
             status: Optional status
             needs_review: Whether note needs review
             review_reason: Review reason if needed
+            has_action_items: Boolean dimension - contains actionable todos
+            is_social: Boolean dimension - involves conversations
+            is_emotional: Boolean dimension - expresses feelings
+            is_knowledge: Boolean dimension - contains learnings
+            is_exploratory: Boolean dimension - brainstorming/ideas
         """
         return index_note(
             note_id, title, body, tags, folder, path, created,
-            status, needs_review, review_reason
+            status, needs_review, review_reason,
+            has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
         )

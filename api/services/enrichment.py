@@ -23,7 +23,11 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
 
     Returns:
         Dictionary with:
-        - secondary_contexts: List of additional cognitive contexts
+        - has_action_items: Boolean - contains actionable todos/tasks
+        - is_social: Boolean - involves conversations with people
+        - is_emotional: Boolean - expresses feelings/emotions
+        - is_knowledge: Boolean - contains learnings/reference material
+        - is_exploratory: Boolean - brainstorming/"what if" thinking
         - people: List of person names/objects mentioned
         - entities: List of concepts, tools, projects, topics (merged)
         - emotions: List of emotional markers
@@ -38,15 +42,12 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
         response = await llm.ainvoke(prompt)
         result = json.loads(response.content)
 
-        # Validate secondary_contexts against valid folders
-        valid_secondary = []
-        primary_folder = primary_classification.get("folder")
-
-        for ctx in result.get("secondary_contexts", []):
-            if ctx in WORKING_FOLDERS and ctx != primary_folder:
-                valid_secondary.append(ctx)
-
-        result["secondary_contexts"] = valid_secondary
+        # Ensure all boolean dimensions exist
+        result.setdefault("has_action_items", False)
+        result.setdefault("is_social", False)
+        result.setdefault("is_emotional", False)
+        result.setdefault("is_knowledge", False)
+        result.setdefault("is_exploratory", False)
 
         # Ensure all arrays exist
         result.setdefault("people", [])
@@ -60,7 +61,11 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
     except Exception as e:
         # Return empty enrichment on error
         return {
-            "secondary_contexts": [],
+            "has_action_items": False,
+            "is_social": False,
+            "is_emotional": False,
+            "is_knowledge": False,
+            "is_exploratory": False,
             "people": [],
             "entities": [],
             "emotions": [],

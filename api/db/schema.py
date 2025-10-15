@@ -36,6 +36,13 @@ def ensure_db():
             updated TEXT NOT NULL,
             status TEXT,
 
+            -- Boolean dimensions (Phase 2: Multi-dimensional classification)
+            has_action_items BOOLEAN DEFAULT 0,
+            is_social BOOLEAN DEFAULT 0,
+            is_emotional BOOLEAN DEFAULT 0,
+            is_knowledge BOOLEAN DEFAULT 0,
+            is_exploratory BOOLEAN DEFAULT 0,
+
             -- Review system (heuristic-based, no fake confidence)
             needs_review BOOLEAN DEFAULT 0,
             review_reason TEXT,

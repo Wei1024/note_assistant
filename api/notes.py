@@ -131,6 +131,13 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
 
     path.write_text(content, encoding='utf-8')
 
+    # Extract boolean dimensions from enrichment
+    has_action_items = enrichment.get("has_action_items", False) if enrichment else False
+    is_social = enrichment.get("is_social", False) if enrichment else False
+    is_emotional = enrichment.get("is_emotional", False) if enrichment else False
+    is_knowledge = enrichment.get("is_knowledge", False) if enrichment else False
+    is_exploratory = enrichment.get("is_exploratory", False) if enrichment else False
+
     # Index in SQLite
     index_note(
         note_id=nid,
@@ -142,7 +149,12 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         created=created,
         status=status,
         needs_review=needs_review,
-        review_reason=reasoning  # Use reasoning as review_reason
+        review_reason=reasoning,  # Use reasoning as review_reason
+        has_action_items=has_action_items,
+        is_social=is_social,
+        is_emotional=is_emotional,
+        is_knowledge=is_knowledge,
+        is_exploratory=is_exploratory
     )
 
     return nid, str(path), front["title"], folder

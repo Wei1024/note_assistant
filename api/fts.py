@@ -137,8 +137,29 @@ def ensure_db():
 
 def index_note(note_id: str, title: str, body: str, tags: list,
                folder: str, path: str, created: str, status: str = None,
-               needs_review: bool = False, review_reason: str = None):
-    """Add note to FTS5 index and metadata tables"""
+               needs_review: bool = False, review_reason: str = None,
+               has_action_items: bool = False, is_social: bool = False,
+               is_emotional: bool = False, is_knowledge: bool = False,
+               is_exploratory: bool = False):
+    """Add note to FTS5 index and metadata tables
+
+    Args:
+        note_id: Note ID
+        title: Note title
+        body: Note body content
+        tags: List of tags
+        folder: Folder classification
+        path: File path
+        created: Creation timestamp
+        status: Task status (todo/in_progress/done)
+        needs_review: Whether note needs review
+        review_reason: Reason for review flag
+        has_action_items: Boolean dimension - contains actionable todos
+        is_social: Boolean dimension - involves conversations
+        is_emotional: Boolean dimension - expresses feelings
+        is_knowledge: Boolean dimension - contains learnings
+        is_exploratory: Boolean dimension - brainstorming/ideas
+    """
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
@@ -150,12 +171,16 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         (note_id, title, body, tags_csv)
     )
 
-    # Metadata with review fields
+    # Metadata with review fields and boolean dimensions
     cur.execute(
         """INSERT OR REPLACE INTO notes_meta
-           (id, path, folder, created, updated, status, needs_review, review_reason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (note_id, path, folder, created, created, status, needs_review, review_reason)
+           (id, path, folder, created, updated, status,
+            has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
+            needs_review, review_reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (note_id, path, folder, created, created, status,
+         has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
+         needs_review, review_reason)
     )
 
     con.commit()
