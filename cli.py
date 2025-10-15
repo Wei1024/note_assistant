@@ -447,21 +447,21 @@ def show_stats():
             for name, count in people:
                 print(f"  👤 {name:20s} {count} notes")
 
-        # Top topics
+        # Top entities
         cur.execute("""
             SELECT entity_value, COUNT(DISTINCT note_id) as cnt
             FROM notes_entities
-            WHERE entity_type='topic'
+            WHERE entity_type='entity'
             GROUP BY entity_value
             ORDER BY cnt DESC
             LIMIT 5
         """)
-        topics = cur.fetchall()
+        entities = cur.fetchall()
 
-        if topics:
-            print(f"\n{Colors.BOLD}Top Topics:{Colors.END}")
-            for topic, count in topics:
-                print(f"  🏷️  {topic:20s} {count} notes")
+        if entities:
+            print(f"\n{Colors.BOLD}Top Entities:{Colors.END}")
+            for entity, count in entities:
+                print(f"  🏷️  {entity:20s} {count} notes")
 
         # Emotions
         cur.execute("""
