@@ -9,14 +9,13 @@ from ..notes import write_markdown, update_note_status, get_notes_created_today
 class NotesRepository:
     """Repository for note CRUD operations"""
 
-    def create(self, folder: str, title: str, tags: list, body: str,
+    def create(self, title: str, tags: list, body: str,
               related_ids: Optional[list] = None, status: Optional[str] = None,
               needs_review: bool = False, reasoning: Optional[str] = None,
-              enrichment: Optional[dict] = None) -> Tuple[str, str, str, str]:
-        """Create a new note
+              enrichment: Optional[dict] = None) -> Tuple[str, str, str]:
+        """Create a new note (flat structure - no folder param)
 
         Args:
-            folder: Primary folder
             title: Note title
             tags: List of tags
             body: Note content
@@ -24,13 +23,13 @@ class NotesRepository:
             status: Optional status (only for tasks)
             needs_review: Whether note needs review
             reasoning: Review reasoning
-            enrichment: Optional enrichment metadata
+            enrichment: Optional enrichment metadata with boolean dimensions
 
         Returns:
-            Tuple of (note_id, path, title, folder)
+            Tuple of (note_id, path, title)
         """
         return write_markdown(
-            folder, title, tags, body, related_ids, status,
+            title, tags, body, related_ids, status,
             needs_review, reasoning, enrichment
         )
 

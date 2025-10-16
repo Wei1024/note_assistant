@@ -54,64 +54,69 @@ async def health():
 
 @app.post("/classify_and_save", response_model=ClassifyResponse)
 async def classify_and_save(req: ClassifyRequest):
-    """Classify note using direct LLM (fast path), enrich with metadata, and save to disk"""
+    """Extract metadata and save note (no folder classification - dimensions only)"""
     try:
-        # Step 1: Primary classification
+        # Step 1: Extract title/tags
         result = await classify_note_async(req.text)
 
-        # Step 2: Enrich with multi-dimensional metadata
+        # Step 2: Enrich with dimensions + entities
         enrichment = None
         try:
             enrichment = await enrich_note_metadata(req.text, result)
         except Exception as enrich_error:
-            # Don't fail if enrichment fails, just log it
             print(f"Enrichment failed: {enrich_error}")
             enrichment = {}
 
-        # Step 3: Save to disk with enrichment in frontmatter
-        note_id, filepath, title, folder = write_markdown(
+        # Step 3: Save to flat structure
+        note_id, filepath, title = write_markdown(
             title=result["title"],
-            folder=result["folder"],
             tags=result["tags"],
             body=req.text,
             status=result.get("status"),
-            needs_review=result.get("needs_review", False),
-            reasoning=result.get("reasoning"),
-            enrichment=enrichment  # Phase 1.3: Pass enrichment to frontmatter
+            enrichment=enrichment
         )
 
-        # Step 4: Store enrichment metadata in database
+        # Step 4: Store enrichment in database
         if enrichment:
             try:
                 con = sqlite3.connect(DB_PATH)
                 store_enrichment_metadata(note_id, enrichment, con)
                 con.close()
             except Exception as db_error:
-                # Don't fail the whole request if DB storage fails
-                print(f"Failed to store enrichment in DB for note {note_id}: {db_error}")
+                print(f"Failed to store enrichment: {db_error}")
+
+        # Derive display folder from dimensions (for CLI compatibility)
+        folder = "notes"
+        if enrichment:
+            if enrichment.get("has_action_items"):
+                folder = "tasks"
+            elif enrichment.get("is_social"):
+                folder = "meetings"
+            elif enrichment.get("is_exploratory"):
+                folder = "ideas"
+            elif enrichment.get("is_knowledge"):
+                folder = "reference"
+            elif enrichment.get("is_emotional"):
+                folder = "journal"
 
         return ClassifyResponse(
             title=title,
             folder=folder,
             tags=result["tags"],
-            first_sentence=result["first_sentence"],
+            first_sentence=result.get("first_sentence", title),
             path=filepath
         )
 
     except Exception as e:
-        # Fallback to journal on any error
         first_line = req.text.split("\n")[0][:60]
-        note_id, filepath, title, folder = write_markdown(
-            folder="journal",  # Safe fallback instead of inbox
+        note_id, filepath, title = write_markdown(
             title=first_line,
             tags=[],
-            body=req.text,
-            needs_review=True,
-            reasoning=f"Error during classification: {str(e)}"
+            body=req.text
         )
         return ClassifyResponse(
             title=title,
-            folder="journal",
+            folder="notes",
             tags=[],
             first_sentence=first_line,
             path=filepath
@@ -119,11 +124,10 @@ async def classify_and_save(req: ClassifyRequest):
 
 @app.post("/save_journal", response_model=ClassifyResponse)
 async def save_journal(req: ClassifyRequest):
-    """Save directly to journal without classification (replaces save_inbox)"""
+    """Save directly without classification (flat structure)"""
     first_line = req.text.split("\n")[0][:60]
 
-    note_id, filepath, title, folder = write_markdown(
-        folder="journal",
+    note_id, filepath, title = write_markdown(
         title=first_line,
         tags=[],
         body=req.text
@@ -131,7 +135,7 @@ async def save_journal(req: ClassifyRequest):
 
     return ClassifyResponse(
         title=title,
-        folder="journal",
+        folder="journal",  # Display value only
         tags=[],
         first_sentence=first_line,
         path=filepath

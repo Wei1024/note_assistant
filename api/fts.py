@@ -21,16 +21,22 @@ def ensure_db():
     """)
 
     # ========================================================================
-    # Core metadata
+    # Core metadata (Phase 2: folder column removed, dimensions added)
     # ========================================================================
     cur.execute("""
         CREATE TABLE IF NOT EXISTS notes_meta (
             id TEXT PRIMARY KEY,
             path TEXT UNIQUE NOT NULL,
-            folder TEXT NOT NULL,
             created TEXT NOT NULL,
             updated TEXT NOT NULL,
             status TEXT,
+
+            -- Boolean dimensions (Phase 2: Multi-dimensional classification)
+            has_action_items BOOLEAN DEFAULT 0,
+            is_social BOOLEAN DEFAULT 0,
+            is_emotional BOOLEAN DEFAULT 0,
+            is_knowledge BOOLEAN DEFAULT 0,
+            is_exploratory BOOLEAN DEFAULT 0,
 
             -- Review system (heuristic-based, no fake confidence)
             needs_review BOOLEAN DEFAULT 0,
@@ -136,7 +142,7 @@ def ensure_db():
     con.close()
 
 def index_note(note_id: str, title: str, body: str, tags: list,
-               folder: str, path: str, created: str, status: str = None,
+               path: str, created: str, status: str = None,
                needs_review: bool = False, review_reason: str = None,
                has_action_items: bool = False, is_social: bool = False,
                is_emotional: bool = False, is_knowledge: bool = False,
@@ -148,7 +154,6 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         title: Note title
         body: Note body content
         tags: List of tags
-        folder: Folder classification
         path: File path
         created: Creation timestamp
         status: Task status (todo/in_progress/done)
@@ -171,14 +176,14 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         (note_id, title, body, tags_csv)
     )
 
-    # Metadata with review fields and boolean dimensions
+    # Metadata with review fields and boolean dimensions (no folder!)
     cur.execute(
         """INSERT OR REPLACE INTO notes_meta
-           (id, path, folder, created, updated, status,
+           (id, path, created, updated, status,
             has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
             needs_review, review_reason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (note_id, path, folder, created, created, status,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (note_id, path, created, created, status,
          has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
          needs_review, review_reason)
     )

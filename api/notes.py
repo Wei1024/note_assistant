@@ -24,28 +24,27 @@ def pick_filename(title: str, created_iso: str) -> str:
     slug = slugify(title)[:80]
     return f"{ymd}-{slug}.md"
 
-def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=None, status=None,
+def write_markdown(title: str, tags: list, body: str, related_ids=None, status=None,
                    needs_review=False, reasoning=None, enrichment=None):
     """Write note to disk and index in SQLite with optional multi-dimensional metadata.
 
     Args:
-        folder: Primary folder (tasks/meetings/ideas/reference/journal)
         title: Note title
         tags: List of tags
         body: Note content
         related_ids: List of related note IDs
-        status: Optional status (only for tasks folder)
+        status: Optional status (only for tasks)
         needs_review: Whether note needs review
         reasoning: Review reasoning
         enrichment: Optional dict from enrich_note_metadata() with:
-            - secondary_contexts: List[str]
+            - has_action_items, is_social, is_emotional, is_knowledge, is_exploratory: Boolean dimensions
             - people: List[dict]
             - entities: List[str]
             - emotions: List[str]
             - time_references: List[dict]
 
     Returns:
-        Tuple of (note_id, path, title, folder)
+        Tuple of (note_id, path, title)
     """
     related_ids = related_ids or []
     enrichment = enrichment or {}
@@ -53,20 +52,19 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
     updated = created
     nid = f"{created}_{uuid.uuid4().hex[:4]}"
 
-    # Create folder
-    folder_path = NOTES_DIR / folder
+    # Flat structure - all notes go to NOTES_DIR root
+    folder_path = NOTES_DIR
     folder_path.mkdir(parents=True, exist_ok=True)
 
     # Generate filename
     fname = pick_filename(title or "note", created)
     path = folder_path / fname
 
-    # Prepare frontmatter
+    # Prepare frontmatter (no folder field!)
     front = {
         "id": nid,
         "title": title or body.splitlines()[0][:60] if body else "Untitled",
         "tags": tags,
-        "folder": folder,
         "related_ids": related_ids,
         "created": created,
         "updated": updated
@@ -144,7 +142,6 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         title=front["title"],
         body=body,
         tags=tags,
-        folder=folder,
         path=str(path),
         created=created,
         status=status,
@@ -157,7 +154,7 @@ def write_markdown(folder: str, title: str, tags: list, body: str, related_ids=N
         is_exploratory=is_exploratory
     )
 
-    return nid, str(path), front["title"], folder
+    return nid, str(path), front["title"]
 
 
 def update_note_status(note_path: str, new_status: str) -> bool:

@@ -255,10 +255,28 @@ def _filter_by_context(note_ids: List[str], context: str) -> List[str]:
     cur = con.cursor()
 
     placeholders = ','.join(['?' for _ in note_ids])
-    cur.execute(
-        f"SELECT id FROM notes_meta WHERE id IN ({placeholders}) AND folder = ?",
-        note_ids + [context]
-    )
+
+    # Map context to dimension column (Phase 2: folder → dimensions)
+    dimension_map = {
+        "tasks": "has_action_items",
+        "meetings": "is_social",
+        "ideas": "is_exploratory",
+        "reference": "is_knowledge",
+        "journal": "is_emotional"
+    }
+
+    dimension_col = dimension_map.get(context)
+    if dimension_col:
+        cur.execute(
+            f"SELECT id FROM notes_meta WHERE id IN ({placeholders}) AND {dimension_col} = 1",
+            note_ids
+        )
+    else:
+        # No filtering if context not recognized
+        cur.execute(
+            f"SELECT id FROM notes_meta WHERE id IN ({placeholders})",
+            note_ids
+        )
 
     result = [row[0] for row in cur.fetchall()]
     con.close()

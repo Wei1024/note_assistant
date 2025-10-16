@@ -227,16 +227,16 @@ class TestIntegration:
         # Step 3: Save (would write to disk in real scenario)
         # Simplified - just verify write_markdown doesn't crash
         try:
-            note_id, path, title, folder = write_markdown(
+            note_id, path, title = write_markdown(
                 title=classification["title"],
-                folder=classification["folder"],
                 tags=classification["tags"],
                 body=text,
                 status=classification.get("status"),
                 enrichment=enrichment
             )
             assert note_id is not None
-            assert folder == "tasks"
+            # Verify dimensions instead of folder
+            assert enrichment.get("has_action_items") is not None
         except Exception as e:
             # write_markdown might fail in test env, that's ok
             pass

@@ -23,7 +23,7 @@ class SearchRepository:
         return search_notes(query, limit, status)
 
     def index_note(self, note_id: str, title: str, body: str, tags: list,
-                  folder: str, path: str, created: str, status: str = None,
+                  path: str, created: str, status: str = None,
                   needs_review: bool = False, review_reason: str = None,
                   has_action_items: bool = False, is_social: bool = False,
                   is_emotional: bool = False, is_knowledge: bool = False,
@@ -35,7 +35,6 @@ class SearchRepository:
             title: Note title
             body: Note body text
             tags: List of tags
-            folder: Primary folder
             path: File path
             created: Creation timestamp
             status: Optional status
@@ -48,7 +47,7 @@ class SearchRepository:
             is_exploratory: Boolean dimension - brainstorming/ideas
         """
         return index_note(
-            note_id, title, body, tags, folder, path, created,
+            note_id, title, body, tags, path, created,
             status, needs_review, review_reason,
             has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
         )

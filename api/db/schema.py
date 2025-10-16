@@ -25,13 +25,12 @@ def ensure_db():
     """)
 
     # ========================================================================
-    # Core metadata
+    # Core metadata (Phase 2: folder column removed, dimensions added)
     # ========================================================================
     cur.execute("""
         CREATE TABLE IF NOT EXISTS notes_meta (
             id TEXT PRIMARY KEY,
             path TEXT UNIQUE NOT NULL,
-            folder TEXT NOT NULL,
             created TEXT NOT NULL,
             updated TEXT NOT NULL,
             status TEXT,
