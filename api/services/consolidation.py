@@ -7,6 +7,7 @@ to find and create meaningful connections without blocking note capture.
 """
 import json
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from ..config import DB_PATH
@@ -386,6 +387,11 @@ async def consolidate_note(note_id: str) -> Dict:
     Returns:
         Dict with consolidation statistics for this note
     """
+    start_time = time.time()
+    timings = {}
+
+    # Timing: Database query
+    db_start = time.time()
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
@@ -425,6 +431,7 @@ async def consolidate_note(note_id: str) -> Dict:
     dimensions = cur.fetchall()
 
     con.close()
+    timings['db_query'] = time.time() - db_start
 
     note = {
         "id": note_id,
@@ -435,20 +442,28 @@ async def consolidate_note(note_id: str) -> Dict:
         "dimensions": dimensions
     }
 
-    # Find candidates
+    # Timing: Find candidates
+    candidates_start = time.time()
     candidates = find_link_candidates(note, max_candidates=10, exclude_today=False)
+    timings['find_candidates'] = time.time() - candidates_start
 
     if not candidates:
+        timings['total'] = time.time() - start_time
+        print(f"⏱️  Consolidation timings for {note_id[:20]}: {timings}")
         return {
             "note_id": note_id,
             "links_created": 0,
-            "candidates_found": 0
+            "candidates_found": 0,
+            "timings": timings
         }
 
-    # Suggest links using LLM
+    # Timing: LLM suggestion
+    llm_start = time.time()
     suggested_links = await suggest_links_batch(note["body"], candidates)
+    timings['llm_suggest'] = time.time() - llm_start
 
-    # Store links in database using repository
+    # Timing: Store links
+    store_start = time.time()
     links_added = 0
     for link in suggested_links:
         try:
@@ -457,10 +472,22 @@ async def consolidate_note(note_id: str) -> Dict:
         except Exception as e:
             print(f"Error storing link from {note['id']} to {link['id']}: {e}")
 
+    timings['store_links'] = time.time() - store_start
+    timings['total'] = time.time() - start_time
+
+    # Log performance metrics
+    print(f"⏱️  Consolidation timings for {note_id[:20]}:")
+    print(f"   DB query: {timings['db_query']:.2f}s")
+    print(f"   Find candidates: {timings['find_candidates']:.2f}s")
+    print(f"   LLM suggest: {timings['llm_suggest']:.2f}s")
+    print(f"   Store links: {timings['store_links']:.2f}s")
+    print(f"   TOTAL: {timings['total']:.2f}s")
+
     return {
         "note_id": note_id,
         "links_created": links_added,
-        "candidates_found": len(candidates)
+        "candidates_found": len(candidates),
+        "timings": timings
     }
 
 

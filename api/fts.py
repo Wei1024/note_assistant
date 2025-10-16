@@ -1,6 +1,5 @@
 import sqlite3
 from pathlib import Path
-from .config import DB_PATH
 
 # Schema is now managed centrally in api/db/schema.py
 # Import ensure_db from there to avoid duplication
@@ -39,6 +38,7 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         is_knowledge: Boolean dimension - contains learnings
         is_exploratory: Boolean dimension - brainstorming/ideas
     """
+    from .config import DB_PATH
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
@@ -74,6 +74,7 @@ def search_notes(query: str, limit: int = 20, status: str = None):
     - Phrases in quotes: '"exact phrase"'
     - Status filtering: status="todo" to filter by task status
     """
+    from .config import DB_PATH
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 

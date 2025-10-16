@@ -4,7 +4,6 @@ Provides high-level query functions that orchestrate graph.py helpers
 """
 import sqlite3
 from typing import List, Dict, Optional
-from ..config import DB_PATH
 from ..graph import (
     find_notes_by_dimension,
     find_notes_by_entity,
@@ -51,6 +50,7 @@ def search_by_dimension(dimension_type: str, dimension_value: str,
             return []  # Unknown context
 
         # Query boolean flags directly
+        from ..config import DB_PATH
         con = sqlite3.connect(DB_PATH)
         cur = con.cursor()
         cur.execute(
