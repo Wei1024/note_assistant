@@ -24,7 +24,7 @@ def search_by_dimension(dimension_type: str, dimension_value: str,
 
     Args:
         dimension_type: Type of dimension (context, emotion, time_reference)
-        dimension_value: Value to search for
+        dimension_value: Value to search for (e.g., "tasks", "excited", "2024-03")
         query_text: Optional text query to combine with dimension filter
         limit: Maximum results to return
 
@@ -33,10 +33,34 @@ def search_by_dimension(dimension_type: str, dimension_value: str,
 
     Examples:
         - search_by_dimension("emotion", "excited")
+        - search_by_dimension("context", "tasks")  # Maps to boolean flags
         - search_by_dimension("emotion", "excited", query_text="vector search")
     """
-    # Get note IDs matching dimension
-    note_ids = find_notes_by_dimension(dimension_type, dimension_value)
+    # Special handling for "context" - map to boolean dimension flags
+    if dimension_type == "context":
+        context_to_dimension = {
+            "tasks": "has_action_items",
+            "meetings": "is_social",
+            "ideas": "is_exploratory",
+            "reference": "is_knowledge",
+            "journal": "is_emotional"
+        }
+
+        dimension_key = context_to_dimension.get(dimension_value)
+        if not dimension_key:
+            return []  # Unknown context
+
+        # Query boolean flags directly
+        con = sqlite3.connect(DB_PATH)
+        cur = con.cursor()
+        cur.execute(
+            f"SELECT id FROM notes_meta WHERE {dimension_key} = 1 ORDER BY created DESC",
+        )
+        note_ids = [row[0] for row in cur.fetchall()]
+        con.close()
+    else:
+        # Get note IDs matching dimension (emotion, time_reference stored in notes_dimensions)
+        note_ids = find_notes_by_dimension(dimension_type, dimension_value)
 
     if not query_text:
         # Return dimension results only
@@ -57,12 +81,12 @@ def search_by_entity(entity_type: str, entity_value: str,
                     context: Optional[str] = None, limit: int = 20) -> List[Dict]:
     """Search notes by entity (person, topic, project, tech).
 
-    Optionally filter by folder context.
+    Optionally filter by dimension context.
 
     Args:
         entity_type: Type of entity (person, topic, project, tech)
         entity_value: Entity value to search for
-        context: Optional folder to filter by (tasks, meetings, ideas, reference, journal)
+        context: Optional dimension context to filter by (tasks, meetings, ideas, reference, journal)
         limit: Maximum results to return
 
     Returns:
@@ -88,7 +112,7 @@ def search_by_person(person_name: str, context: Optional[str] = None,
 
     Args:
         person_name: Person's name to search for
-        context: Optional folder to filter by
+        context: Optional dimension context to filter by
         limit: Maximum results to return
 
     Returns:
@@ -143,10 +167,10 @@ def search_graph(start_note_id: str, depth: int = 2,
             "id": node["id"],
             "title": _get_title_for_note(node["path"]),
             "path": node["path"],
-            "folder": node["folder"],
             "created": node["created"],
+            "dimensions": node["dimensions"],  # Boolean dimension flags
             "metadata": {
-                "folder": node["folder"],  # For color coding
+                "dimensions": node["dimensions"],  # For color coding/filtering
                 "entity_count": 0,
                 "dimension_count": 0
             }
@@ -236,11 +260,11 @@ def _get_paths_for_note_ids(note_ids: List[str]) -> Dict[str, str]:
 
 
 def _filter_by_context(note_ids: List[str], context: str) -> List[str]:
-    """Filter note IDs by folder context.
+    """Filter note IDs by dimension context.
 
     Args:
         note_ids: List of note IDs
-        context: Folder name (tasks, meetings, ideas, reference, journal)
+        context: Dimension context name (tasks, meetings, ideas, reference, journal)
 
     Returns:
         Filtered list of note IDs
@@ -256,7 +280,7 @@ def _filter_by_context(note_ids: List[str], context: str) -> List[str]:
 
     placeholders = ','.join(['?' for _ in note_ids])
 
-    # Map context to dimension column (Phase 2: folder → dimensions)
+    # Map context to dimension column
     dimension_map = {
         "tasks": "has_action_items",
         "meetings": "is_social",
@@ -323,7 +347,7 @@ def _format_results_from_ids(note_ids: List[str]) -> List[Dict]:
     if not note_ids:
         return []
 
-    # Get note metadata from DB (no folder column - removed in Phase 2)
+    # Get note metadata from DB
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
@@ -335,24 +359,20 @@ def _format_results_from_ids(note_ids: List[str]) -> List[Dict]:
 
     notes = {}
     for row in cur.fetchall():
-        # Derive display folder from dimensions
-        folder = "notes"
-        if row[3]:  # has_action_items
-            folder = "tasks"
-        elif row[4]:  # is_social
-            folder = "meetings"
-        elif row[6]:  # is_exploratory
-            folder = "ideas"
-        elif row[7]:  # is_knowledge
-            folder = "reference"
-        elif row[5]:  # is_emotional
-            folder = "journal"
+        # Row indices: 0=id, 1=path, 2=created, 3=has_action_items, 4=is_social,
+        #              5=is_emotional, 6=is_knowledge, 7=is_exploratory
 
         notes[row[0]] = {
             "id": row[0],
             "path": row[1],
-            "folder": folder,  # Derived from dimensions
-            "created": row[2]
+            "created": row[2],
+            "dimensions": {
+                "has_action_items": bool(row[3]),
+                "is_social": bool(row[4]),
+                "is_emotional": bool(row[5]),
+                "is_knowledge": bool(row[6]),
+                "is_exploratory": bool(row[7])
+            }
         }
 
     con.close()
@@ -389,7 +409,7 @@ def _format_results_from_ids(note_ids: List[str]) -> List[Dict]:
             "snippet": snippet,
             "score": 1.0,  # All results are exact matches for metadata queries
             "metadata": {
-                "folder": note["folder"],
+                "dimensions": note["dimensions"],
                 "created": note["created"],
                 "title": title
             }

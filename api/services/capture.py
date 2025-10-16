@@ -28,13 +28,13 @@ def _determine_needs_review(result: dict, raw_text: str) -> tuple[bool, list[str
         reasons.append("LLM expressed uncertainty")
 
     # Heuristic 3: Fallback classification
-    if "defaulted" in reasoning or "fallback" in reasoning:
+    if "defaulted" in reasoning or "fallback" in reasoning or "failed" in reasoning:
         reasons.append("Fallback classification used")
 
-    # Heuristic 4: No clear folder match
-    if result.get("folder") == "journal" and not any(word in raw_text.lower() for word in ["feel", "reflect", "today", "grateful", "overwhelmed"]):
-        # Classified as journal but doesn't have journal keywords
-        reasons.append("Weak match for journal folder")
+    # Heuristic 4: No dimensions set (weak classification)
+    dimensions = result.get("dimensions", {})
+    if isinstance(dimensions, dict) and not any(dimensions.values()):
+        reasons.append("No clear dimensions identified")
 
     return len(reasons) > 0, reasons
 
@@ -42,7 +42,7 @@ def _determine_needs_review(result: dict, raw_text: str) -> tuple[bool, list[str
 
 @tool
 def classify_note(raw_text: str) -> dict:
-    """Classify a note into title, folder, and tags using local LLM.
+    """Classify a note using multi-dimensional analysis.
 
     NOTE: This synchronous version is kept for future agent integration.
     For production FastAPI endpoints, use classify_note_async() instead.
@@ -51,46 +51,53 @@ def classify_note(raw_text: str) -> dict:
         raw_text: The raw note content to classify
 
     Returns:
-        Dictionary with title, folder, tags, first_sentence
+        Dictionary with title, tags, status, dimensions (boolean flags)
     """
     llm = get_llm()  # Use singleton instance
-
-    prompt = f"""You are a note classifier. Analyze this note and return JSON.
-
-Note: {raw_text}
-
-Return ONLY valid JSON:
-{{
-  "title": "Short descriptive title (max 10 words)",
-  "folder": "inbox|projects|people|research|journal",
-  "tags": ["tag1", "tag2", "tag3"],
-  "first_sentence": "One sentence summary"
-}}
-
-Folder selection guide:
-- projects: Work tasks, technical issues, code
-- people: Meetings, conversations, relationships
-- research: Learning, articles, investigations
-- journal: Personal thoughts, reflections
-- inbox: When unsure
-
-Tags should be lowercase, 3-6 relevant keywords.
-
-JSON:"""
+    # Use centralized prompt from llm/prompts.py
+    from ..llm.prompts import Prompts
+    prompt = Prompts.CLASSIFY_NOTE.format(text=raw_text)
 
     try:
         response = llm.invoke(prompt)
         result = json.loads(response.content)
 
-        # Validation
-        valid_folders = ["inbox", "projects", "people", "research", "journal"]
-        if result.get("folder") not in valid_folders:
-            result["folder"] = "inbox"
+        # Extract dimensions from LLM response
+        dimensions = result.get("dimensions", {})
+
+        # Validate dimensions structure
+        default_dimensions = {
+            "has_action_items": False,
+            "is_social": False,
+            "is_emotional": False,
+            "is_knowledge": False,
+            "is_exploratory": False
+        }
+
+        # Merge with defaults
+        for key in default_dimensions:
+            if key not in dimensions:
+                dimensions[key] = default_dimensions[key]
+
+        result["dimensions"] = dimensions
+
+        # Validate status field - ONLY for notes with action items
+        status = result.get("status")
+        if status == "null":
+            status = None
+
+        if dimensions.get("has_action_items"):
+            valid_statuses = ["todo", "in_progress", "done", None]
+            if status not in valid_statuses:
+                status = "todo"
+        else:
+            status = None
+
+        result["status"] = status
 
         # Ensure required fields
         result.setdefault("title", raw_text.split("\n")[0][:60])
         result.setdefault("tags", [])
-        result.setdefault("first_sentence", raw_text.split("\n")[0])
 
         return result
 
@@ -98,9 +105,15 @@ JSON:"""
         # Fallback on error
         return {
             "title": raw_text.split("\n")[0][:60],
-            "folder": "inbox",
+            "dimensions": {
+                "has_action_items": False,
+                "is_social": False,
+                "is_emotional": True,  # Safe fallback
+                "is_knowledge": False,
+                "is_exploratory": False
+            },
             "tags": [],
-            "first_sentence": raw_text.split("\n")[0],
+            "status": None,
             "error": str(e)
         }
 
@@ -110,11 +123,13 @@ async def classify_note_async(raw_text: str) -> dict:
 
     Provides better performance by not blocking the event loop.
 
+    Returns multi-dimensional classification - dimensions determine everything.
+
     Args:
         raw_text: The raw note content to classify
 
     Returns:
-        Dictionary with title, folder, tags, first_sentence, status
+        Dictionary with title, tags, status, dimensions (boolean flags)
     """
     llm = get_llm()  # Use singleton instance from api.llm
     prompt = Prompts.CLASSIFY_NOTE.format(text=raw_text)
@@ -123,26 +138,37 @@ async def classify_note_async(raw_text: str) -> dict:
         response = await llm.ainvoke(prompt)  # Async call
         result = json.loads(response.content)
 
-        # Validation
-        folder = result.get("folder")
-        if folder not in VALID_FOLDERS:
-            # Fallback to journal for uncertain classifications
-            folder = "journal"
-            result["folder"] = folder
-            result["reasoning"] = f"Invalid folder '{result.get('folder')}', defaulted to journal"
+        # Extract dimensions from LLM response
+        dimensions = result.get("dimensions", {})
 
-        # Validate status field - ONLY for tasks folder
+        # Validate dimensions structure - ensure all keys present
+        default_dimensions = {
+            "has_action_items": False,
+            "is_social": False,
+            "is_emotional": False,
+            "is_knowledge": False,
+            "is_exploratory": False
+        }
+
+        # Merge with defaults (in case LLM missed some)
+        for key in default_dimensions:
+            if key not in dimensions:
+                dimensions[key] = default_dimensions[key]
+
+        result["dimensions"] = dimensions
+
+        # Validate status field - ONLY for notes with action items
         status = result.get("status")
         if status == "null":
             status = None
 
-        if folder == "tasks":
-            # Validate status for tasks
+        if dimensions.get("has_action_items"):
+            # Validate status for actionable notes
             valid_statuses = ["todo", "in_progress", "done", None]
             if status not in valid_statuses:
-                status = "todo"  # Default to todo for tasks
+                status = "todo"  # Default to todo for action items
         else:
-            # Non-task folders should NOT have status
+            # Non-actionable notes should NOT have status
             status = None
 
         result["status"] = status
@@ -150,7 +176,6 @@ async def classify_note_async(raw_text: str) -> dict:
         # Ensure required fields
         result.setdefault("title", raw_text.split("\n")[0][:60])
         result.setdefault("tags", [])
-        result.setdefault("first_sentence", raw_text.split("\n")[0])
         result.setdefault("reasoning", "")
 
         # Heuristic-based review flagging (no fake confidence)
@@ -162,12 +187,17 @@ async def classify_note_async(raw_text: str) -> dict:
         return result
 
     except Exception as e:
-        # Fallback on error
+        # Fallback on error - default to all dimensions false
         return {
             "title": raw_text.split("\n")[0][:60],
-            "folder": "journal",  # Safe fallback
+            "dimensions": {
+                "has_action_items": False,
+                "is_social": False,
+                "is_emotional": True,  # Assume emotional/journal as safe fallback
+                "is_knowledge": False,
+                "is_exploratory": False
+            },
             "tags": [],
-            "first_sentence": raw_text.split("\n")[0],
             "status": None,
             "reasoning": f"Classification failed: {str(e)}",
             "needs_review": True,

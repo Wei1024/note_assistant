@@ -68,7 +68,7 @@ class TestCaptureFlow:
         text = "Fix the login bug in authentication service"
         result = await classify_note_async(text)
 
-        assert result["folder"] == "tasks"
+        # Task should have status (only tasks have status)
         assert result["status"] in ["todo", "in_progress", "done"]
         assert len(result["tags"]) > 0
         assert "title" in result
@@ -79,9 +79,8 @@ class TestCaptureFlow:
         text = "Met with Sarah to discuss memory consolidation research"
         result = await classify_note_async(text)
 
-        # LLM might classify as meetings or journal - both reasonable
-        assert result["folder"] in ["meetings", "journal"]
-        assert result["status"] is None  # Meetings don't have status
+        # Meeting notes should not have status
+        assert result["status"] is None
         # Tags might be empty for some classifications
         assert "tags" in result
 
@@ -91,7 +90,7 @@ class TestCaptureFlow:
         text = "What if we used FAISS for vector search instead of manual linking?"
         result = await classify_note_async(text)
 
-        assert result["folder"] == "ideas"
+        # Ideas don't have status
         assert result["status"] is None
 
     @pytest.mark.asyncio
@@ -100,7 +99,7 @@ class TestCaptureFlow:
         text = "Feeling overwhelmed today with all the project deadlines"
         result = await classify_note_async(text)
 
-        assert result["folder"] == "journal"
+        # Journal notes don't have status
         assert result["status"] is None
 
 
@@ -217,8 +216,9 @@ class TestIntegration:
         text = "Fix the authentication bug in the login service"
         classification = await classify_note_async(text)
 
-        # LLM might classify as tasks or journal - both acceptable for this test
-        assert classification["folder"] in ["tasks", "journal", "ideas"]
+        # Classification should return basic fields
+        assert "title" in classification
+        assert "tags" in classification
 
         # Step 2: Enrich
         enrichment = await enrich_note_metadata(text, classification)
@@ -235,7 +235,7 @@ class TestIntegration:
                 enrichment=enrichment
             )
             assert note_id is not None
-            # Verify dimensions instead of folder
+            # Verify dimensions exist
             assert enrichment.get("has_action_items") is not None
         except Exception as e:
             # write_markdown might fail in test env, that's ok

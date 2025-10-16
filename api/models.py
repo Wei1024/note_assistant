@@ -5,11 +5,18 @@ class ClassifyRequest(BaseModel):
     text: str
     context_hint: Optional[str] = None
 
+class DimensionFlags(BaseModel):
+    """Multi-dimensional boolean flags representing note characteristics"""
+    has_action_items: bool = False
+    is_social: bool = False
+    is_emotional: bool = False
+    is_knowledge: bool = False
+    is_exploratory: bool = False
+
 class ClassifyResponse(BaseModel):
     title: str
-    folder: str
+    dimensions: DimensionFlags
     tags: List[str]
-    first_sentence: str
     path: str
 
 class SearchRequest(BaseModel):
@@ -21,7 +28,7 @@ class SearchHit(BaseModel):
     path: str
     snippet: str
     score: float = 0.0
-    metadata: Optional[dict] = None  # Optional metadata (match_type, search_note, folder, created, title)
+    metadata: Optional[dict] = None  # Optional metadata (match_type, search_note, dimensions, created, title)
 
 class UpdateStatusRequest(BaseModel):
     note_path: str
@@ -36,11 +43,11 @@ class DimensionSearchRequest(BaseModel):
 class EntitySearchRequest(BaseModel):
     entity_type: str  # person, topic, project, tech
     entity_value: str
-    context: Optional[str] = None  # Optional folder filter
+    context: Optional[str] = None  # Optional dimension context filter (tasks, meetings, ideas, etc.)
 
 class PersonSearchRequest(BaseModel):
     name: str
-    context: Optional[str] = None  # Optional folder filter
+    context: Optional[str] = None  # Optional dimension context filter (tasks, meetings, ideas, etc.)
 
 class GraphSearchRequest(BaseModel):
     start_note_id: str

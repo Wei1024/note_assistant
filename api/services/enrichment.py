@@ -19,7 +19,7 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
     Args:
         text: Raw note content
         primary_classification: Result from classify_note_async()
-            Must contain: folder, title, tags
+            Must contain: dimensions, title, tags
 
     Returns:
         Dictionary with:
@@ -35,8 +35,20 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
         - reasoning: Brief explanation of extraction
     """
     llm = get_llm()
-    primary_folder = primary_classification.get("folder", "journal")
-    prompt = Prompts.ENRICH_METADATA.format(text=text, primary_folder=primary_folder)
+    # Get primary dimension context for enrichment prompt
+    dimensions = primary_classification.get("dimensions", {})
+    if dimensions.get("has_action_items"):
+        primary_context = "tasks"
+    elif dimensions.get("is_social"):
+        primary_context = "meetings"
+    elif dimensions.get("is_exploratory"):
+        primary_context = "ideas"
+    elif dimensions.get("is_knowledge"):
+        primary_context = "reference"
+    else:
+        primary_context = "journal"
+
+    prompt = Prompts.ENRICH_METADATA.format(text=text, primary_context=primary_context)
 
     try:
         response = await llm.ainvoke(prompt)

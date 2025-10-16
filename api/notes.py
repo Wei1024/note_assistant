@@ -53,14 +53,14 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
     nid = f"{created}_{uuid.uuid4().hex[:4]}"
 
     # Flat structure - all notes go to NOTES_DIR root
-    folder_path = NOTES_DIR
-    folder_path.mkdir(parents=True, exist_ok=True)
+    notes_dir = NOTES_DIR
+    notes_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate filename
     fname = pick_filename(title or "note", created)
-    path = folder_path / fname
+    path = notes_dir / fname
 
-    # Prepare frontmatter (no folder field!)
+    # Prepare frontmatter
     front = {
         "id": nid,
         "title": title or body.splitlines()[0][:60] if body else "Untitled",
@@ -213,7 +213,7 @@ def get_notes_created_today():
     """Get all notes created today with their enrichment metadata.
 
     Returns:
-        List of dicts with keys: id, path, folder, body, entities, dimensions
+        List of dicts with keys: id, path, body, entities, dimensions, dimension_flags
     """
     import sqlite3
     from .config import DB_PATH
@@ -226,7 +226,7 @@ def get_notes_created_today():
     today = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
     today_start = today.isoformat()
 
-    # Get today's notes (no folder - derive from dimensions)
+    # Get today's notes with boolean dimension flags
     cur.execute(
         """SELECT id, path, created, has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
            FROM notes_meta
@@ -238,19 +238,7 @@ def get_notes_created_today():
     notes = []
     for row in cur.fetchall():
         note_id, path, created = row[0], row[1], row[2]
-
-        # Derive folder from dimensions
-        folder = "notes"
-        if row[3]:  # has_action_items
-            folder = "tasks"
-        elif row[4]:  # is_social
-            folder = "meetings"
-        elif row[7]:  # is_exploratory
-            folder = "ideas"
-        elif row[6]:  # is_knowledge
-            folder = "reference"
-        elif row[5]:  # is_emotional
-            folder = "journal"
+        has_action_items, is_social, is_emotional, is_knowledge, is_exploratory = row[3], row[4], row[5], row[6], row[7]
 
         # Read note body from file
         try:
@@ -287,10 +275,16 @@ def get_notes_created_today():
         notes.append({
             "id": note_id,
             "path": path,
-            "folder": folder,
             "body": body,
             "entities": entities,
-            "dimensions": dimensions
+            "dimensions": dimensions,
+            "dimension_flags": {
+                "has_action_items": bool(has_action_items),
+                "is_social": bool(is_social),
+                "is_emotional": bool(is_emotional),
+                "is_knowledge": bool(is_knowledge),
+                "is_exploratory": bool(is_exploratory)
+            }
         })
 
     con.close()

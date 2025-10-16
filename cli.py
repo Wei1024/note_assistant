@@ -125,7 +125,26 @@ def capture_note(text=None):
             data = response.json()
             print_section("✅", "Saved!")
             print(f"  Title:  {data.get('title')}")
-            print(f"  Folder: {Colors.CYAN}{data.get('folder')}{Colors.END}")
+
+            # Display active dimensions
+            dimensions = data.get('dimensions', {})
+            active_dims = []
+            dim_icons = {
+                'has_action_items': '🔧 tasks',
+                'is_social': '👤 social',
+                'is_emotional': '💭 emotional',
+                'is_knowledge': '📚 knowledge',
+                'is_exploratory': '🧪 exploratory'
+            }
+            for dim_key, label in dim_icons.items():
+                if dimensions.get(dim_key):
+                    active_dims.append(label)
+
+            if active_dims:
+                print(f"  Dimensions: {Colors.CYAN}{', '.join(active_dims)}{Colors.END}")
+            else:
+                print(f"  Dimensions: {Colors.DIM}(none){Colors.END}")
+
             print(f"  Tags:   {', '.join(data.get('tags', []))}")
             print(f"  Path:   {Colors.DIM}{data.get('path', 'N/A')}{Colors.END}")
         else:
@@ -148,9 +167,8 @@ def display_search_results(results, query_info=None):
         path = Path(r['path'])
         title = path.stem.replace('-', ' ').title()
 
-        # Metadata line
+        # Metadata line (just show timestamp)
         metadata = r.get('metadata') or {}
-        folder = metadata.get('folder', 'unknown')
         created = metadata.get('created', '')
         if created:
             try:
@@ -159,7 +177,7 @@ def display_search_results(results, query_info=None):
             except:
                 created = created[:16]
 
-        meta_line = f"{folder} • {created}" if created else folder
+        meta_line = created if created else ""
 
         # Snippet
         snippet = r['snippet'][:200]
@@ -269,7 +287,7 @@ def search_by_entity_cmd(entity_type, entity_value, context=None, limit=10):
         print(f"{Colors.RED}Error: {e}{Colors.END}")
 
 def search_by_context_cmd(context, limit=10):
-    """Search by context/folder"""
+    """Search by dimension context"""
     print_section("📁", f"Notes in: {context}")
 
     try:
@@ -324,7 +342,13 @@ def display_graph(graph, root_id):
         return
 
     root = nodes[root_id]
-    print(f"\n{Colors.BOLD}📄 {root['title']}{Colors.END} ({root.get('folder', 'unknown')})")
+
+    # Display dimensions if available
+    dimensions = root.get('dimensions', {})
+    active_dims = [k.replace('is_', '').replace('has_', '') for k, v in dimensions.items() if v]
+    dim_str = f" [{', '.join(active_dims)}]" if active_dims else ""
+
+    print(f"\n{Colors.BOLD}📄 {root.get('title', root['path'])}{Colors.END}{dim_str}")
     print(f"{Colors.DIM}   {root.get('created', '')}{Colors.END}")
 
     # Show entities
@@ -509,8 +533,8 @@ def show_stats():
         print(f"{Colors.RED}Error computing stats: {e}{Colors.END}")
 
 def list_notes():
-    """List notes by context"""
-    print_section("📋", "List Notes by Context")
+    """List notes (flat storage - all notes in root)"""
+    print_section("📋", "Recent Notes")
 
     notes_dir = Path(os.getenv("NOTES_DIR", "~/Notes")).expanduser()
 
@@ -518,24 +542,29 @@ def list_notes():
         print(f"{Colors.RED}Notes directory not found: {notes_dir}{Colors.END}")
         return
 
-    # Use correct folder names (Phase 1 cognitive model)
-    folders = ["tasks", "meetings", "ideas", "reference", "journal", "inbox"]
+    # Flat storage: all notes in root directory
+    notes = sorted(notes_dir.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
 
-    total = 0
-    for folder in folders:
-        folder_path = notes_dir / folder
-        if folder_path.exists():
-            notes = sorted(folder_path.glob("*.md"), reverse=True)  # Most recent first
-            if notes:
-                emoji = {'tasks': '📋', 'meetings': '🤝', 'ideas': '💡', 'reference': '📚', 'journal': '📓', 'inbox': '📥'}.get(folder, '📁')
-                print(f"\n{Colors.CYAN}{emoji} {folder.upper()}{Colors.END} ({len(notes)} notes)")
-                for note in notes[:10]:
-                    print(f"  • {note.name}")
-                if len(notes) > 10:
-                    print(f"  {Colors.DIM}... and {len(notes) - 10} more{Colors.END}")
-                total += len(notes)
+    if not notes:
+        print(f"{Colors.YELLOW}No notes found{Colors.END}")
+        return
 
-    print(f"\n{Colors.BOLD}Total: {total} notes{Colors.END}")
+    print(f"\n{Colors.CYAN}Found {len(notes)} notes{Colors.END}\n")
+
+    # Show recent 20 notes
+    for i, note in enumerate(notes[:20], 1):
+        # Get file modification time
+        mtime = note.stat().st_mtime
+        from datetime import datetime
+        dt = datetime.fromtimestamp(mtime)
+        time_str = dt.strftime('%Y-%m-%d %H:%M')
+
+        print(f"  {i:2d}. {Colors.DIM}{time_str}{Colors.END}  {note.stem}")
+
+    if len(notes) > 20:
+        print(f"\n  {Colors.DIM}... and {len(notes) - 20} more notes{Colors.END}")
+
+    print(f"\n{Colors.BOLD}Total: {len(notes)} notes{Colors.END}")
 
 # ============================================================================
 # Interactive Menu System
@@ -549,7 +578,7 @@ def search_menu():
         print(f"  {Colors.CYAN}2.{Colors.END} 👤 By Person")
         print(f"  {Colors.CYAN}3.{Colors.END} 😊 By Emotion")
         print(f"  {Colors.CYAN}4.{Colors.END} 🏷️  By Entity (topic/project/tech)")
-        print(f"  {Colors.CYAN}5.{Colors.END} 📁 By Context (folder)")
+        print(f"  {Colors.CYAN}5.{Colors.END} 📁 By Context (dimension)")
         print(f"  {Colors.CYAN}6.{Colors.END} ← Back to Main Menu")
 
         choice = input(f"\n{Colors.BOLD}Your choice:{Colors.END} ").strip()
@@ -642,7 +671,7 @@ def main():
     search_parser.add_argument('--person', help='Search by person')
     search_parser.add_argument('--emotion', help='Search by emotion')
     search_parser.add_argument('--entity', help='Search by entity (format: type:value)')
-    search_parser.add_argument('--context', help='Search by context/folder')
+    search_parser.add_argument('--context', help='Search by dimension context')
     search_parser.add_argument('--limit', type=int, default=10, help='Max results')
 
     # Graph

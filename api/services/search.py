@@ -94,7 +94,7 @@ async def parse_smart_query(natural_query: str) -> dict:
     - person: Name of person to filter by
     - emotion: Emotion dimension (excited, frustrated, curious, etc.)
     - entity: Specific named thing (tool, concept, project, topic)
-    - context: Folder filter (tasks, meetings, ideas, reference, journal)
+    - context: Dimension context filter (tasks, meetings, ideas, reference, journal)
     - text_query: Remaining keywords for FTS5 search
     - sort: Sort order (recent, oldest)
 
@@ -178,16 +178,30 @@ async def search_notes_smart(natural_query: str, limit: int = 10, status: str = 
         # Fall back to FTS5 text search
         results = fts_search(filters["text_query"], limit=limit, status=status)
 
-        # If context filter exists, filter results by folder
+        # If context filter exists, filter results by dimensions
         if filters.get("context") and results:
-            context_folder = filters["context"]
-            filtered_results = [r for r in results if context_folder in r.get("path", "")]
+            context = filters["context"]
+            # Map context names to dimension keys
+            context_to_dimension = {
+                "tasks": "has_action_items",
+                "meetings": "is_social",
+                "ideas": "is_exploratory",
+                "reference": "is_knowledge",
+                "journal": "is_emotional"
+            }
 
-            # Fallback: If filtering removed all results, return unfiltered
-            if len(filtered_results) == 0:
-                relaxed_search = True
-            else:
-                results = filtered_results
+            dimension_key = context_to_dimension.get(context)
+            if dimension_key:
+                filtered_results = [
+                    r for r in results
+                    if r.get("metadata", {}).get("dimensions", {}).get(dimension_key, False)
+                ]
+
+                # Fallback: If filtering removed all results, return unfiltered
+                if len(filtered_results) == 0:
+                    relaxed_search = True
+                else:
+                    results = filtered_results
     else:
         # No filters extracted, fall back to text search
         results = fts_search(natural_query, limit=limit, status=status)
@@ -199,7 +213,7 @@ async def search_notes_smart(natural_query: str, limit: int = 10, status: str = 
             if not isinstance(result.get("metadata"), dict):
                 result["metadata"] = {}
             result["metadata"]["match_type"] = "related"
-            result["metadata"]["search_note"] = "Found in different folder (searched all folders)"
+            result["metadata"]["search_note"] = "Found related notes (expanded search across all dimensions)"
 
     # Step 3: Apply status filter if specified (for task searches)
     if status and results:

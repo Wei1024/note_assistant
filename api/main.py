@@ -5,7 +5,7 @@ from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 from .llm import initialize_llm, shutdown_llm
 from .models import (
-    ClassifyRequest, ClassifyResponse, SearchRequest, SearchHit, UpdateStatusRequest,
+    ClassifyRequest, ClassifyResponse, DimensionFlags, SearchRequest, SearchHit, UpdateStatusRequest,
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
     GraphSearchRequest, GraphData
 )
@@ -54,7 +54,7 @@ async def health():
 
 @app.post("/classify_and_save", response_model=ClassifyResponse)
 async def classify_and_save(req: ClassifyRequest):
-    """Extract metadata and save note (no folder classification - dimensions only)"""
+    """Extract metadata and save note (dimensions-based classification)"""
     try:
         # Step 1: Extract title/tags
         result = await classify_note_async(req.text)
@@ -85,25 +85,19 @@ async def classify_and_save(req: ClassifyRequest):
             except Exception as db_error:
                 print(f"Failed to store enrichment: {db_error}")
 
-        # Derive display folder from dimensions (for CLI compatibility)
-        folder = "notes"
-        if enrichment:
-            if enrichment.get("has_action_items"):
-                folder = "tasks"
-            elif enrichment.get("is_social"):
-                folder = "meetings"
-            elif enrichment.get("is_exploratory"):
-                folder = "ideas"
-            elif enrichment.get("is_knowledge"):
-                folder = "reference"
-            elif enrichment.get("is_emotional"):
-                folder = "journal"
+        # Extract dimensions from enrichment
+        dimensions = DimensionFlags(
+            has_action_items=enrichment.get("has_action_items", False) if enrichment else False,
+            is_social=enrichment.get("is_social", False) if enrichment else False,
+            is_emotional=enrichment.get("is_emotional", False) if enrichment else False,
+            is_knowledge=enrichment.get("is_knowledge", False) if enrichment else False,
+            is_exploratory=enrichment.get("is_exploratory", False) if enrichment else False
+        )
 
         return ClassifyResponse(
             title=title,
-            folder=folder,
+            dimensions=dimensions,
             tags=result["tags"],
-            first_sentence=result.get("first_sentence", title),
             path=filepath
         )
 
@@ -116,9 +110,8 @@ async def classify_and_save(req: ClassifyRequest):
         )
         return ClassifyResponse(
             title=title,
-            folder="notes",
+            dimensions=DimensionFlags(),  # All False on error
             tags=[],
-            first_sentence=first_line,
             path=filepath
         )
 
@@ -135,9 +128,8 @@ async def save_journal(req: ClassifyRequest):
 
     return ClassifyResponse(
         title=title,
-        folder="journal",  # Display value only
+        dimensions=DimensionFlags(is_emotional=True),  # Assume journal is emotional
         tags=[],
-        first_sentence=first_line,
         path=filepath
     )
 
@@ -275,7 +267,7 @@ async def search_dimensions(req: DimensionSearchRequest):
 async def search_entities(req: EntitySearchRequest):
     """Search notes by entity (person, topic, project, tech).
 
-    Optionally filter by folder context.
+    Optionally filter by dimension context.
 
     Examples:
         - {"entity_type": "topic", "entity_value": "vector search"}

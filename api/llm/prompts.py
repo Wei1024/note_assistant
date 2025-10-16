@@ -11,57 +11,63 @@ class Prompts:
     # CLASSIFICATION PROMPTS
     # ========================================================================
 
-    CLASSIFY_NOTE = """You are a note classifier using a brain-based cognitive model. Analyze this note and return JSON.
+    CLASSIFY_NOTE = """You are a note classifier using multi-dimensional analysis. Analyze this note and return JSON.
 
 Note: {text}
 
 Return ONLY valid JSON:
 {{
   "title": "Short descriptive title (max 10 words)",
-  "folder": "tasks|meetings|ideas|reference|journal",
-  "reasoning": "Brief explanation of classification choice",
+  "dimensions": {{
+    "has_action_items": true|false,
+    "is_social": true|false,
+    "is_emotional": true|false,
+    "is_knowledge": true|false,
+    "is_exploratory": true|false
+  }},
+  "reasoning": "Brief explanation of dimension choices",
   "tags": ["tag1", "tag2", "tag3"],
-  "first_sentence": "One sentence summary",
   "status": "todo|in_progress|done|null"
 }}
 
-Folder Selection Guide (Cognitive Contexts):
+Dimension Guide (Multi-dimensional Classification):
 
-**tasks** (Executive Function - Working Memory)
-- Actionable items with clear completion state
-- ONLY folder that can have status (todo/in_progress/done)
-- Examples: "Fix login bug", "Call Sarah tomorrow", "Deploy to production"
-- If NOT actionable, it's NOT a task!
+**has_action_items** (Executive Function)
+- Contains actionable items, todos, or tasks with clear completion state
+- ONLY notes with action items can have status (todo/in_progress/done)
+- Examples: "Fix login bug", "Call Sarah tomorrow", "Deploy to production", "Buy groceries"
+- If it has a checkbox or implies something to DO, set this true
 
-**meetings** (Social Cognition - Working Memory)
-- Conversations, discussions, standup notes
-- Captures WHO + WHEN + WHAT was discussed
-- Examples: "Met with Sarah about memory research", "Team standup notes", "1-on-1 with manager"
-- NO status field (meetings happened or didn't happen, not todo/done)
+**is_social** (Social Cognition)
+- Involves conversations, meetings, discussions with other people
+- Captures WHO you interacted with
+- Examples: "Met with Sarah about research", "Team standup", "1-on-1 with manager", "Coffee chat"
+- Can be true WITH has_action_items (e.g., "Meeting with Sarah - action: follow up on proposal")
 
-**ideas** (Creative Exploration - Working Memory)
-- Brainstorms, hypotheses, "what if" thoughts
-- Exploration mode, not execution mode
-- Examples: "Could we use Redis for caching?", "Product idea: bulk export", "Hypothesis about user behavior"
-- NO status field (ideas are explored, not completed)
+**is_emotional** (Emotional Processing)
+- Expresses personal feelings, reflections, emotional states
+- Captures HOW you feel
+- Examples: "Feeling overwhelmed today", "Grateful for support", "Excited about new project"
+- Can be true WITH other dimensions (e.g., "Frustrated with this bug" = emotional + has_action_items)
 
-**reference** (Procedural Memory - Working Memory)
-- How-tos, learnings, evergreen knowledge
-- Timeless information you'll reference later
-- Examples: "How Postgres EXPLAIN works", "Git rebase tutorial", "Python async patterns"
-- NO status field (knowledge just exists)
+**is_knowledge** (Procedural Memory)
+- Contains learnings, how-tos, reference information, evergreen knowledge
+- Information you'll want to reference later
+- Examples: "How Postgres EXPLAIN works", "Python async patterns", "Notes from research paper"
+- Can be true WITH other dimensions (e.g., meeting notes that teach you something)
 
-**journal** (Emotional Processing - Limbic System)
-- Personal reflections, feelings, thoughts
-- Not task-oriented, just being present
-- Examples: "Feeling overwhelmed today", "Grateful for team support", "Reflecting on career growth"
-- NO status field (emotions aren't tasks)
+**is_exploratory** (Creative Exploration)
+- Brainstorms, hypotheses, "what if" thoughts, open-ended exploration
+- Thinking mode, not execution mode
+- Examples: "Could we use Redis?", "Product idea: bulk export", "Hypothesis about user behavior"
+- Can be true WITH has_action_items (e.g., "Explore Redis - TODO: benchmark it")
 
 Classification Rules:
-1. If uncertain about classification, explain why in reasoning (e.g., "could be task or idea")
-2. Focus on PRIMARY intent (what is this note mainly about?)
-3. Status field ONLY valid for "tasks" folder
-4. When uncertain between folders, prefer the most actionable context
+1. Multiple dimensions can be TRUE simultaneously (notes are multi-faceted!)
+2. If a note has actionable todos/checkboxes, has_action_items MUST be true
+3. Status field ONLY valid when has_action_items=true
+4. When uncertain, explain in reasoning
+5. Be conservative - only set dimensions that are CLEARLY present
 
 Tags should be lowercase, 3-6 relevant keywords.
 
@@ -77,7 +83,7 @@ You are a metadata extraction agent for a brain-based note-taking system. Your g
 
 Note content: {text}
 
-Primary classification: {primary_folder}
+Primary context: {primary_context}
 
 ---
 
@@ -379,7 +385,7 @@ Specific named thing being searched.
   - "notes about Python" → entity = "Python"
 
 ### context
-Folder or cognitive context to search within.
+Dimension context to search within (maps to boolean dimension flags).
 - Valid values ONLY: tasks, meetings, ideas, reference, journal
 - Extract only if one of these is explicitly mentioned
 - Example: "meetings about AWS" → context = "meetings"
@@ -516,7 +522,7 @@ Only extract entity when it's a clear, specific named thing (like "FAISS", "AWS"
 Extract any emotion word the user mentions. Don't limit yourself to a predefined list.
 
 **Context is strict:**
-Only extract context if it matches one of the five valid folders: tasks, meetings, ideas, reference, journal.
+Only extract context if it matches one of the five valid dimension contexts: tasks, meetings, ideas, reference, journal.
 
 **Use null for missing fields:**
 If a filter is not clearly present in the query, return null for that field. Do not invent or assume information.

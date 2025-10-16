@@ -451,7 +451,7 @@ def get_graph_neighborhood(note_id: str, depth: int = 1) -> Dict:
 
         visited.add(current_id)
 
-        # Get node metadata (no folder - derive from dimensions)
+        # Get node metadata with boolean dimension flags
         cur.execute(
             """SELECT id, path, created, has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
                FROM notes_meta
@@ -460,24 +460,17 @@ def get_graph_neighborhood(note_id: str, depth: int = 1) -> Dict:
         )
         row = cur.fetchone()
         if row:
-            # Derive folder from dimensions
-            folder = "notes"
-            if row[3]:  # has_action_items
-                folder = "tasks"
-            elif row[4]:  # is_social
-                folder = "meetings"
-            elif row[7]:  # is_exploratory
-                folder = "ideas"
-            elif row[6]:  # is_knowledge
-                folder = "reference"
-            elif row[5]:  # is_emotional
-                folder = "journal"
-
             nodes.append({
                 "id": row[0],
                 "path": row[1],
-                "folder": folder,
-                "created": row[2]
+                "created": row[2],
+                "dimensions": {
+                    "has_action_items": bool(row[3]),
+                    "is_social": bool(row[4]),
+                    "is_emotional": bool(row[5]),
+                    "is_knowledge": bool(row[6]),
+                    "is_exploratory": bool(row[7])
+                }
             })
 
         # Get outgoing edges
