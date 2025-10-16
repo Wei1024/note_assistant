@@ -1,0 +1,356 @@
+[
+  {
+    "note_name": "2025-10-11-brainstorming-vector-embeddings.md",
+    "actual_folder": "ideas",
+    "content_preview": "Had a great brainstorming session with Alex about implementing vector embeddings in our search system. We discussed using FAISS and ChromaDB. Feeling excited about the possibilities! Need to research ",
+    "classify": {
+      "success": true,
+      "time": 5.848566055297852,
+      "raw_response": "{}",
+      "parsed": {},
+      "predicted_folder": "unknown",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.362453937530518,
+      "raw_response": "{\n  \"has_action_items\": true,\n  \"is_social\": true,\n  \"is_emotional\": true,\n  \"is_knowledge\": false,\n  \"is_exploratory\": true,\n  \"people\": [\"Alex\"],\n  \"emotions\": [\"excited\"],\n  \"entities\": [\"vector embeddings\", \"FAISS\", \"ChromaDB\", \"dimensionality reduction\"],\n  \"time_refs\": [\"next week\"]\n}",
+      "parsed": {
+        "has_action_items": true,
+        "is_social": true,
+        "is_emotional": true,
+        "is_knowledge": false,
+        "is_exploratory": true,
+        "people": [
+          "Alex"
+        ],
+        "emotions": [
+          "excited"
+        ],
+        "entities": [
+          "vector embeddings",
+          "FAISS",
+          "ChromaDB",
+          "dimensionality reduction"
+        ],
+        "time_refs": [
+          "next week"
+        ]
+      },
+      "inferred_folders": [
+        "tasks",
+        "meetings",
+        "journal",
+        "ideas"
+      ],
+      "match": true
+    }
+  },
+  {
+    "note_name": "2025-10-12-evaluate-vector-db-options-for-semantic-search.md",
+    "actual_folder": "ideas",
+    "content_preview": "Researching vector database options for semantic search. FAISS looks promising but need to compare with Pinecone and Weaviate. This connects to our earlier brainstorming about embeddings. Should help ",
+    "classify": {
+      "success": true,
+      "time": 1.9130768775939941,
+      "raw_response": "{}",
+      "parsed": {},
+      "predicted_folder": "unknown",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.593019723892212,
+      "raw_response": "{\n  \"has_action_items\": true,\n  \"is_social\": true,\n  \"is_emotional\": true,\n  \"is_knowledge\": false,\n  \"is_exploratory\": true,\n  \"people\": [\"Alex\"],\n  \"emotions\": [\"overwhelmed\", \"excited\"],\n  \"entities\": [\"vector search project\", \"FAISS\", \"Pinecone\", \"Weaviate\", \"embeddings\"],\n  \"time_refs\": [\"next week\"]\n}",
+      "parsed": {
+        "has_action_items": true,
+        "is_social": true,
+        "is_emotional": true,
+        "is_knowledge": false,
+        "is_exploratory": true,
+        "people": [
+          "Alex"
+        ],
+        "emotions": [
+          "overwhelmed",
+          "excited"
+        ],
+        "entities": [
+          "vector search project",
+          "FAISS",
+          "Pinecone",
+          "Weaviate",
+          "embeddings"
+        ],
+        "time_refs": [
+          "next week"
+        ]
+      },
+      "inferred_folders": [
+        "tasks",
+        "meetings",
+        "journal",
+        "ideas"
+      ],
+      "match": true
+    }
+  },
+  {
+    "note_name": "2025-10-12-memory-consolidation-for-background-tasks.md",
+    "actual_folder": "ideas",
+    "content_preview": "Idea: What if we use the memory consolidation pattern for other background tasks? Like auto-archiving old notes, or generating weekly summaries. The brain-based approach could apply to many features.",
+    "classify": {
+      "success": true,
+      "time": 1.9155988693237305,
+      "raw_response": "{}",
+      "parsed": {},
+      "predicted_folder": "unknown",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.156497955322266,
+      "raw_response": "{\n  \"has_action_items\": false,\n  \"is_social\": false,\n  \"is_emotional\": false,\n  \"is_knowledge\": true,\n  \"is_exploratory\": true,\n  \"people\": [],\n  \"emotions\": [],\n  \"entities\": [\"memory consolidation\", \"auto-archiving\", \"weekly summaries\", \"brain\"],\n  \"time_refs\": []\n}",
+      "parsed": {
+        "has_action_items": false,
+        "is_social": false,
+        "is_emotional": false,
+        "is_knowledge": true,
+        "is_exploratory": true,
+        "people": [],
+        "emotions": [],
+        "entities": [
+          "memory consolidation",
+          "auto-archiving",
+          "weekly summaries",
+          "brain"
+        ],
+        "time_refs": []
+      },
+      "inferred_folders": [
+        "reference",
+        "ideas"
+      ],
+      "match": true
+    }
+  },
+  {
+    "note_name": "2025-10-02-fix-aws-alb-cognito-integration-issue-need-to-check-vpc-e.md",
+    "actual_folder": "inbox",
+    "content_preview": "Fix AWS ALB + Cognito integration issue. Need to check VPC endpoints and security groups.",
+    "classify": {
+      "success": true,
+      "time": 5.169189214706421,
+      "raw_response": "{\n  \"title\": \"Fix AWS ALB + Cognito integration issue\",\n  \"folder\": \"tasks\",\n  \"reasoning\": \"This note describes an actionable item \u2013 fixing an integration issue. It requires a clear completion state, making 'tasks' the most appropriate folder.\",\n  \"tags\": [\"aws\", \"alb\", \"cognito\", \"integration\", \"troubleshooting\"],\n  \"first_sentence\": \"The note requires fixing an AWS ALB + Cognito integration problem.\",\n  \"status\": \"todo\"\n}",
+      "parsed": {
+        "title": "Fix AWS ALB + Cognito integration issue",
+        "folder": "tasks",
+        "reasoning": "This note describes an actionable item \u2013 fixing an integration issue. It requires a clear completion state, making 'tasks' the most appropriate folder.",
+        "tags": [
+          "aws",
+          "alb",
+          "cognito",
+          "integration",
+          "troubleshooting"
+        ],
+        "first_sentence": "The note requires fixing an AWS ALB + Cognito integration problem.",
+        "status": "todo"
+      },
+      "predicted_folder": "tasks",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.120654106140137,
+      "raw_response": "{\n  \"has_action_items\": true,\n  \"is_social\": false,\n  \"is_emotional\": false,\n  \"is_knowledge\": true,\n  \"is_exploratory\": false,\n  \"people\": [],\n  \"emotions\": [],\n  \"entities\": [\"AWS ALB\", \"Cognito\", \"VPC endpoints\", \"security groups\"],\n  \"time_refs\": []\n}",
+      "parsed": {
+        "has_action_items": true,
+        "is_social": false,
+        "is_emotional": false,
+        "is_knowledge": true,
+        "is_exploratory": false,
+        "people": [],
+        "emotions": [],
+        "entities": [
+          "AWS ALB",
+          "Cognito",
+          "VPC endpoints",
+          "security groups"
+        ],
+        "time_refs": []
+      },
+      "inferred_folders": [
+        "tasks",
+        "reference"
+      ],
+      "match": false
+    }
+  },
+  {
+    "note_name": "2025-10-09-dodgers-win-and-advance.md",
+    "actual_folder": "inbox",
+    "content_preview": "today The dodgers beat the Phillies in the 11th ining, very excited game too! and Dodgers are moving to teh NLCS now!",
+    "classify": {
+      "success": true,
+      "time": 5.776492118835449,
+      "raw_response": "{\n  \"title\": \"Dodgers Win NLCS Series\",\n  \"folder\": \"tasks\",\n  \"reasoning\": \"This note describes a completed sporting event and the resulting advancement. It represents a clear outcome and a next step, making 'tasks' the most appropriate folder. While it expresses excitement, the core is about a defined result.\",\n  \"tags\": [\"dodgers\", \"phillies\", \"sports\", \"baseball\", \"nlcs\"],\n  \"first_sentence\": \"The Dodgers defeated the Phillies in the 11th inning.\",\n  \"status\": \"done\"\n}",
+      "parsed": {
+        "title": "Dodgers Win NLCS Series",
+        "folder": "tasks",
+        "reasoning": "This note describes a completed sporting event and the resulting advancement. It represents a clear outcome and a next step, making 'tasks' the most appropriate folder. While it expresses excitement, the core is about a defined result.",
+        "tags": [
+          "dodgers",
+          "phillies",
+          "sports",
+          "baseball",
+          "nlcs"
+        ],
+        "first_sentence": "The Dodgers defeated the Phillies in the 11th inning.",
+        "status": "done"
+      },
+      "predicted_folder": "tasks",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.140213966369629,
+      "raw_response": "{\n  \"has_action_items\": false,\n  \"is_social\": false,\n  \"is_emotional\": true,\n  \"is_knowledge\": false,\n  \"is_exploratory\": false,\n  \"people\": [],\n  \"emotions\": [\"excited\"],\n  \"entities\": [\"Dodgers\", \"Phillies\", \"NLCS\"],\n  \"time_refs\": []\n}",
+      "parsed": {
+        "has_action_items": false,
+        "is_social": false,
+        "is_emotional": true,
+        "is_knowledge": false,
+        "is_exploratory": false,
+        "people": [],
+        "emotions": [
+          "excited"
+        ],
+        "entities": [
+          "Dodgers",
+          "Phillies",
+          "NLCS"
+        ],
+        "time_refs": []
+      },
+      "inferred_folders": [
+        "journal"
+      ],
+      "match": false
+    }
+  },
+  {
+    "note_name": "2025-10-09-blue-jays-beat-yankees-in-alds.md",
+    "actual_folder": "journal",
+    "content_preview": "I just watched the ALDS game, blue jays against Yankees and they beat yankees 5:2, amazing game! They are going to the finals for american league now, amazing!",
+    "classify": {
+      "success": true,
+      "time": 6.559077739715576,
+      "raw_response": "{\n  \"title\": \"ALDS Game Result - Blue Jays Victory\",\n  \"folder\": \"reference\",\n  \"reasoning\": \"This note describes a specific event (the ALDS game) and expresses excitement. While it contains a personal reaction, the core content is a factual record of a sporting event, making 'reference' the most appropriate folder. It's not a task, meeting, idea, or journal entry.\",\n  \"tags\": [\"sports\", \"alds\", \"blue jays\", \"yankees\", \"baseball\", \"game result\"],\n  \"first_sentence\": \"The Blue Jays defeated the Yankees 5:2 in the ALDS game.\",\n  \"status\": \"null\"\n}",
+      "parsed": {
+        "title": "ALDS Game Result - Blue Jays Victory",
+        "folder": "reference",
+        "reasoning": "This note describes a specific event (the ALDS game) and expresses excitement. While it contains a personal reaction, the core content is a factual record of a sporting event, making 'reference' the most appropriate folder. It's not a task, meeting, idea, or journal entry.",
+        "tags": [
+          "sports",
+          "alds",
+          "blue jays",
+          "yankees",
+          "baseball",
+          "game result"
+        ],
+        "first_sentence": "The Blue Jays defeated the Yankees 5:2 in the ALDS game.",
+        "status": "null"
+      },
+      "predicted_folder": "reference",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.383552074432373,
+      "raw_response": "{\n  \"has_action_items\": false,\n  \"is_social\": false,\n  \"is_emotional\": true,\n  \"is_knowledge\": false,\n  \"is_exploratory\": false,\n  \"people\": [],\n  \"emotions\": [\"amazing\"],\n  \"entities\": [\"ALDS\", \"blue jays\", \"Yankees\", \"finals\", \"American League\"],\n  \"time_refs\": []\n}",
+      "parsed": {
+        "has_action_items": false,
+        "is_social": false,
+        "is_emotional": true,
+        "is_knowledge": false,
+        "is_exploratory": false,
+        "people": [],
+        "emotions": [
+          "amazing"
+        ],
+        "entities": [
+          "ALDS",
+          "blue jays",
+          "Yankees",
+          "finals",
+          "American League"
+        ],
+        "time_refs": []
+      },
+      "inferred_folders": [
+        "journal"
+      ],
+      "match": true
+    }
+  },
+  {
+    "note_name": "2025-10-13-port-moody-park-and-korean-food.md",
+    "actual_folder": "journal",
+    "content_preview": "Charlotte and I had a great time today, we went to Port Moody, a park called Rocky Point Park and we walked in the trail there around the Burrad Inlet, it was amazing. We also went to a Korean restaur",
+    "classify": {
+      "success": true,
+      "time": 6.071321964263916,
+      "raw_response": "{\n  \"title\": \"Port Moody outing and restaurant visit\",\n  \"folder\": \"reference\",\n  \"reasoning\": \"This note describes a specific event and a restaurant recommendation. It's a record of an experience, making 'reference' the most appropriate category. It doesn't represent a task or a meeting.\",\n  \"tags\": [\"port moody\", \"restaurant\", \"korean food\", \"lougheed\", \"burrad inlet\"],\n  \"first_sentence\": \"Charlotte and I enjoyed a walk at Rocky Point Park in Port Moody and visited Kang's kitchen.\",\n  \"status\": \"null\"\n}",
+      "parsed": {
+        "title": "Port Moody outing and restaurant visit",
+        "folder": "reference",
+        "reasoning": "This note describes a specific event and a restaurant recommendation. It's a record of an experience, making 'reference' the most appropriate category. It doesn't represent a task or a meeting.",
+        "tags": [
+          "port moody",
+          "restaurant",
+          "korean food",
+          "lougheed",
+          "burrad inlet"
+        ],
+        "first_sentence": "Charlotte and I enjoyed a walk at Rocky Point Park in Port Moody and visited Kang's kitchen.",
+        "status": "null"
+      },
+      "predicted_folder": "reference",
+      "match": false
+    },
+    "metadata": {
+      "success": true,
+      "time": 6.94982123374939,
+      "raw_response": "{\n  \"has_action_items\": false,\n  \"is_social\": true,\n  \"is_emotional\": true,\n  \"is_knowledge\": false,\n  \"is_exploratory\": false,\n  \"people\": [\"Charlotte\", \"Kang\"],\n  \"emotions\": [\"great time\", \"amazing\"],\n  \"entities\": [\"Port Moody\", \"Rocky Point Park\", \"Burrad Inlet\", \"Korean restaurant\", \"Kang's kitchen\", \"parents\"],\n  \"time_refs\": []\n}",
+      "parsed": {
+        "has_action_items": false,
+        "is_social": true,
+        "is_emotional": true,
+        "is_knowledge": false,
+        "is_exploratory": false,
+        "people": [
+          "Charlotte",
+          "Kang"
+        ],
+        "emotions": [
+          "great time",
+          "amazing"
+        ],
+        "entities": [
+          "Port Moody",
+          "Rocky Point Park",
+          "Burrad Inlet",
+          "Korean restaurant",
+          "Kang's kitchen",
+          "parents"
+        ],
+        "time_refs": []
+      },
+      "inferred_folders": [
+        "meetings",
+        "journal"
+      ],
+      "match": true
+    }
+  }
+]

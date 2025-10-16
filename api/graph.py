@@ -113,11 +113,11 @@ def index_note_with_enrichment(note_id: str, enrichment: dict, db_connection=Non
     Args:
         note_id: Note ID
         enrichment: Dict from enrich_note_metadata() containing:
-            - secondary_contexts: List[str]
             - people: List[dict] or List[str]
             - entities: List[str]
             - emotions: List[str]
             - time_references: List[dict] or List[str]
+            - Boolean dimensions stored separately in notes_meta
         db_connection: SQLite connection (or creates new one)
     """
     should_close = False
@@ -126,11 +126,7 @@ def index_note_with_enrichment(note_id: str, enrichment: dict, db_connection=Non
         should_close = True
 
     try:
-        # Store secondary contexts as dimensions
-        for context in enrichment.get("secondary_contexts", []):
-            add_dimension(note_id, "context", context, db_connection=db_connection)
-
-        # Store emotions as dimensions
+        # Store emotions as dimensions (for rich detail - actual emotion names)
         for emotion in enrichment.get("emotions", []):
             add_dimension(note_id, "emotion", emotion, db_connection=db_connection)
 
@@ -455,20 +451,33 @@ def get_graph_neighborhood(note_id: str, depth: int = 1) -> Dict:
 
         visited.add(current_id)
 
-        # Get node metadata
+        # Get node metadata (no folder - derive from dimensions)
         cur.execute(
-            """SELECT id, path, folder, created
+            """SELECT id, path, created, has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
                FROM notes_meta
                WHERE id = ?""",
             (current_id,)
         )
         row = cur.fetchone()
         if row:
+            # Derive folder from dimensions
+            folder = "notes"
+            if row[3]:  # has_action_items
+                folder = "tasks"
+            elif row[4]:  # is_social
+                folder = "meetings"
+            elif row[7]:  # is_exploratory
+                folder = "ideas"
+            elif row[6]:  # is_knowledge
+                folder = "reference"
+            elif row[5]:  # is_emotional
+                folder = "journal"
+
             nodes.append({
                 "id": row[0],
                 "path": row[1],
-                "folder": row[2],
-                "created": row[3]
+                "folder": folder,
+                "created": row[2]
             })
 
         # Get outgoing edges

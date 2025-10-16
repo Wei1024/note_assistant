@@ -80,25 +80,15 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
     if reasoning:
         front["review_reason"] = reasoning
 
-    # Add enrichment metadata (Phase 1.3)
+    # Add enrichment metadata to frontmatter (Phase 2: emotions only, not contexts)
     if enrichment:
-        # Secondary contexts
-        secondary_contexts = enrichment.get("secondary_contexts", [])
-        if secondary_contexts:
-            front["dimensions"] = [
-                {"type": "context", "value": ctx}
-                for ctx in secondary_contexts
-            ]
-
-        # Emotions
+        # Emotions (stored in frontmatter for visibility)
         emotions = enrichment.get("emotions", [])
         if emotions:
-            if "dimensions" not in front:
-                front["dimensions"] = []
-            front["dimensions"].extend([
+            front["dimensions"] = [
                 {"type": "emotion", "value": emotion}
                 for emotion in emotions
-            ])
+            ]
 
         # Entities
         entities = {}
@@ -236,9 +226,9 @@ def get_notes_created_today():
     today = datetime.now().astimezone().replace(hour=0, minute=0, second=0, microsecond=0)
     today_start = today.isoformat()
 
-    # Get today's notes
+    # Get today's notes (no folder - derive from dimensions)
     cur.execute(
-        """SELECT id, path, folder, created
+        """SELECT id, path, created, has_action_items, is_social, is_emotional, is_knowledge, is_exploratory
            FROM notes_meta
            WHERE created >= ?
            ORDER BY created""",
@@ -247,7 +237,20 @@ def get_notes_created_today():
 
     notes = []
     for row in cur.fetchall():
-        note_id, path, folder, created = row
+        note_id, path, created = row[0], row[1], row[2]
+
+        # Derive folder from dimensions
+        folder = "notes"
+        if row[3]:  # has_action_items
+            folder = "tasks"
+        elif row[4]:  # is_social
+            folder = "meetings"
+        elif row[7]:  # is_exploratory
+            folder = "ideas"
+        elif row[6]:  # is_knowledge
+            folder = "reference"
+        elif row[5]:  # is_emotional
+            folder = "journal"
 
         # Read note body from file
         try:

@@ -323,23 +323,36 @@ def _format_results_from_ids(note_ids: List[str]) -> List[Dict]:
     if not note_ids:
         return []
 
-    # Get note metadata from DB
+    # Get note metadata from DB (no folder column - removed in Phase 2)
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
 
     placeholders = ','.join(['?' for _ in note_ids])
     cur.execute(
-        f"SELECT id, path, folder, created FROM notes_meta WHERE id IN ({placeholders})",
+        f"SELECT id, path, created, has_action_items, is_social, is_emotional, is_knowledge, is_exploratory FROM notes_meta WHERE id IN ({placeholders})",
         note_ids
     )
 
     notes = {}
     for row in cur.fetchall():
+        # Derive display folder from dimensions
+        folder = "notes"
+        if row[3]:  # has_action_items
+            folder = "tasks"
+        elif row[4]:  # is_social
+            folder = "meetings"
+        elif row[6]:  # is_exploratory
+            folder = "ideas"
+        elif row[7]:  # is_knowledge
+            folder = "reference"
+        elif row[5]:  # is_emotional
+            folder = "journal"
+
         notes[row[0]] = {
             "id": row[0],
             "path": row[1],
-            "folder": row[2],
-            "created": row[3]
+            "folder": folder,  # Derived from dimensions
+            "created": row[2]
         }
 
     con.close()

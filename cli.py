@@ -417,19 +417,31 @@ def show_stats():
         print(f"{Colors.BOLD}Knowledge Base:{Colors.END}")
         print(f"  Total Notes: {total_notes}")
 
-        # By folder
-        cur.execute("SELECT folder, COUNT(*) FROM notes_meta GROUP BY folder ORDER BY COUNT(*) DESC")
-        folders = cur.fetchall()
+        # By dimensions (replaced folder classification)
+        dimensions = [
+            ('has_action_items', 'tasks', '📋'),
+            ('is_social', 'meetings', '🤝'),
+            ('is_exploratory', 'ideas', '💡'),
+            ('is_knowledge', 'reference', '📚'),
+            ('is_emotional', 'journal', '📓')
+        ]
 
-        if folders:
-            print(f"\n{Colors.BOLD}By Context:{Colors.END}")
-            max_count = folders[0][1] if folders else 1
-            for folder, count in folders:
+        print(f"\n{Colors.BOLD}By Dimension:{Colors.END}")
+        max_count = 0
+        dimension_counts = []
+
+        for dim_col, label, emoji in dimensions:
+            cur.execute(f"SELECT COUNT(*) FROM notes_meta WHERE {dim_col} = 1")
+            count = cur.fetchone()[0]
+            dimension_counts.append((label, count, emoji))
+            max_count = max(max_count, count)
+
+        for label, count, emoji in dimension_counts:
+            if count > 0:
                 pct = (count / total_notes * 100) if total_notes > 0 else 0
-                bar_length = int(count / max_count * 20)
+                bar_length = int(count / max_count * 20) if max_count > 0 else 0
                 bar = '█' * bar_length + '░' * (20 - bar_length)
-                emoji = {'tasks': '📋', 'meetings': '🤝', 'ideas': '💡', 'reference': '📚', 'journal': '📓'}.get(folder, '📁')
-                print(f"  {emoji} {folder:12s} {count:3d} notes ({pct:5.1f}%)  [{bar}]")
+                print(f"  {emoji} {label:12s} {count:3d} notes ({pct:5.1f}%)  [{bar}]")
 
         # Top people
         cur.execute("""
