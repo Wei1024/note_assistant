@@ -255,6 +255,75 @@ Synthesizes search results into a coherent summary that answers your natural lan
 
 ---
 
+#### 2b. Synthesis with Streaming (Real-time)
+
+**POST** `/synthesize/stream`
+
+Same as `/synthesize` but streams the summary in real-time using Server-Sent Events (SSE). Provides better UX by showing progressive results as the LLM generates them.
+
+**Request Body:**
+```json
+{
+  "query": "what did I learn about memory consolidation?",
+  "limit": 10
+}
+```
+
+**Response (SSE Stream):**
+```
+data: {"type": "metadata", "query": "what did I learn...", "notes_analyzed": 2}
+
+data: {"type": "chunk", "content": "Memory consolidation "}
+
+data: {"type": "chunk", "content": "refers to the process "}
+
+data: {"type": "chunk", "content": "by which the brain stabilizes..."}
+
+data: {"type": "results", "search_results": [...]}
+
+data: {"type": "done"}
+```
+
+**Event Types:**
+- `metadata`: Initial information (query, notes count)
+- `chunk`: Incremental summary content
+- `results`: Full search results array
+- `done`: Stream completion signal
+
+**Frontend Integration:**
+```typescript
+const eventSource = new EventSource('/synthesize/stream', {
+  method: 'POST',
+  body: JSON.stringify({ query: "...", limit: 10 })
+});
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+
+  if (data.type === 'metadata') {
+    console.log(`Analyzing ${data.notes_analyzed} notes...`);
+  } else if (data.type === 'chunk') {
+    // Append to summary display
+    summaryElement.textContent += data.content;
+  } else if (data.type === 'results') {
+    // Show search results
+    displayResults(data.search_results);
+  } else if (data.type === 'done') {
+    eventSource.close();
+  }
+};
+```
+
+**Benefits:**
+- Progressive rendering - user sees output immediately
+- Better perceived performance
+- Interactive "typing" effect
+- Can cancel mid-stream if needed
+
+**Duration:** Same total time (~2-4s) but starts showing results after ~1s
+
+---
+
 #### 3. Keyword Search (Fast)
 
 **POST** `/search` or `/search_fast`
@@ -593,15 +662,16 @@ Same as `/search/graph` but via GET request.
 
 ### Response Times
 
-| Endpoint | Typical Duration | Bottleneck |
-|----------|-----------------|------------|
-| `/health` | <10ms | None |
-| `/search_fast` | <100ms | FTS5 query |
-| `/search_smart` | 1-2s | LLM parsing |
-| `/synthesize` | 2-4s | LLM synthesis + search |
-| `/classify_and_save` | 3-5s | LLM classification + enrichment |
-| `/consolidate/{note_id}` | 4-5s | LLM link suggestion (99.85%) |
-| `/search/graph` | <100ms | Database query |
+| Endpoint | Typical Duration | Bottleneck | Notes |
+|----------|-----------------|------------|-------|
+| `/health` | <10ms | None | - |
+| `/search_fast` | <100ms | FTS5 query | - |
+| `/search_smart` | 1-2s | LLM parsing | - |
+| `/synthesize` | 2-4s | LLM synthesis + search | Full response at end |
+| `/synthesize/stream` | 2-4s | LLM synthesis + search | Progressive chunks (SSE) |
+| `/classify_and_save` | 3-5s | LLM classification + enrichment | - |
+| `/consolidate/{note_id}` | 4-5s | LLM link suggestion (99.85%) | - |
+| `/search/graph` | <100ms | Database query | - |
 
 ### Optimization Notes
 

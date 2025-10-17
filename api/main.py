@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 from .llm import initialize_llm, shutdown_llm
@@ -13,7 +14,7 @@ from .services.capture import classify_note_async
 from .services.search import search_notes_smart
 from .services.enrichment import enrich_note_metadata, store_enrichment_metadata
 from .services.consolidation import consolidate_daily_notes, consolidate_note
-from .services.synthesis import synthesize_search_results
+from .services.synthesis import synthesize_search_results, synthesize_search_results_stream
 from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
     search_graph, get_graph_visualization
@@ -200,6 +201,48 @@ async def synthesize(req: SynthesisRequest):
     """
     result = await synthesize_search_results(req.query, req.limit)
     return SynthesisResponse(**result)
+
+@app.post("/synthesize/stream")
+async def synthesize_stream(req: SynthesisRequest):
+    """Stream synthesis results in real-time using Server-Sent Events.
+
+    Uses smart search to find relevant notes, then streams an LLM-powered
+    summary as it's being generated for better UX.
+
+    Request body:
+    {
+        "query": "what did I learn about memory consolidation?",
+        "limit": 10
+    }
+
+    Returns SSE stream with event types:
+    - metadata: {"type": "metadata", "query": "...", "notes_analyzed": 3}
+    - chunk: {"type": "chunk", "content": "Based on your notes, "}
+    - results: {"type": "results", "search_results": [...]}
+    - done: {"type": "done"}
+
+    Example stream:
+    data: {"type": "metadata", "query": "...", "notes_analyzed": 2}
+
+    data: {"type": "chunk", "content": "Memory consolidation "}
+
+    data: {"type": "chunk", "content": "happens during sleep..."}
+
+    data: {"type": "results", "search_results": [...]}
+
+    data: {"type": "done"}
+
+    Duration: Same as /synthesize (~2-4s) but progressive rendering
+    """
+    return StreamingResponse(
+        synthesize_search_results_stream(req.query, req.limit),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
 
 @app.patch("/notes/status")
 async def update_status(req: UpdateStatusRequest):
