@@ -42,10 +42,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="QuickNote Backend", version="0.2.0", lifespan=lifespan)
 
-# CORS for Tauri
+# CORS for Tauri and Vue frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["tauri://localhost", "http://localhost", "http://127.0.0.1"],
+    allow_origins=[
+        "tauri://localhost",
+        "http://localhost:5174",  # Vue frontend dev server
+        "http://127.0.0.1:5174",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
