@@ -3,6 +3,7 @@ import { colors } from '@/design/colors'
 import { spacing } from '@/design/spacing'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import Icon from '@/components/shared/Icon.vue'
+import ToastContainer from '@/components/shared/ToastContainer.vue'
 
 const route = useRoute()
 </script>
@@ -51,6 +52,9 @@ const route = useRoute()
     <main class="main" :style="mainStyle">
       <RouterView />
     </main>
+
+    <!-- Global Toast Notifications -->
+    <ToastContainer />
   </div>
 </template>
 

@@ -1,40 +1,45 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref } from 'vue'
 import { useNoteCapture } from '@/composables/useNoteCapture'
+import { useToast } from '@/composables/useToast'
 import Button from '@/components/shared/Button.vue'
-import Badge from '@/components/shared/Badge.vue'
 import { colors } from '@/design/colors'
 import { typography } from '@/design/typography'
 import { spacing, borderRadius } from '@/design/spacing'
-import type { Dimensions } from '@/types/api'
 
 const noteText = ref('')
-const { isLoading, error, result, capture, reset } = useNoteCapture()
-
-// Auto-clear result after 5 seconds
-watch(result, (newResult) => {
-  if (newResult) {
-    setTimeout(() => {
-      reset()
-      noteText.value = ''
-    }, 5000)
-  }
-})
+const { isLoading, error, capture } = useNoteCapture()
+const { success, info } = useToast()
 
 const handleSave = async () => {
-  await capture(noteText.value)
+  const text = noteText.value
+
+  const result = await capture(text, (_noteId, title) => {
+    // Called when background classification completes
+    success(`✨ Classification complete: "${title}"`, 5000)
+  })
+
+  if (result) {
+    // Show immediate success
+    success(`✓ Note saved: "${result.title}"`)
+
+    // Clear textarea immediately for next note
+    noteText.value = ''
+
+    // Show info about background processing
+    setTimeout(() => {
+      info('⏳ Adding dimensions and tags...', 4000)
+    }, 500)
+  }
 }
 
-const activeDimensions = computed(() => {
-  if (!result.value) return []
-
-  const dims = result.value.dimensions
-  return (Object.keys(dims) as Array<keyof Dimensions>).filter(
-    (key) => dims[key] === true
-  )
-})
-
-const characterCount = computed(() => noteText.value.length)
+// Keyboard shortcut: Cmd/Ctrl+Enter to save
+const handleKeydown = (event: KeyboardEvent) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    event.preventDefault()
+    handleSave()
+  }
+}
 </script>
 
 <template>
@@ -44,55 +49,46 @@ const characterCount = computed(() => noteText.value.length)
         Capture Your Thoughts
       </h2>
       <p :style="{ color: colors.text.muted, fontSize: typography.fontSize.base }">
-        Write naturally, AI will organize and classify your note automatically.
+        Write naturally. Notes are saved instantly and enriched with AI-powered classification.
       </p>
     </div>
 
     <div class="capture-view__content">
-      <!-- Textarea -->
+      <!-- Textarea - never disabled, always ready -->
       <textarea
         v-model="noteText"
-        :disabled="isLoading"
-        placeholder="Type your note here... Meeting notes, ideas, tasks, or anything else on your mind."
+        placeholder="Type your note here... Meeting notes, ideas, tasks, or anything else on your mind.
+
+Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to save quickly."
         class="capture-textarea"
-        :style="textareaStyle"
+        :style="textareaStyle as any"
+        @keydown="handleKeydown"
         autofocus
       />
 
-      <!-- Character count -->
-      <div
-        v-if="noteText"
-        :style="{
-          fontSize: typography.fontSize.sm,
-          color: colors.text.muted,
-          textAlign: 'right',
-          marginTop: spacing[2]
-        }"
-      >
-        {{ characterCount }} characters
-      </div>
-
-      <!-- Action buttons -->
+      <!-- Action button -->
       <div class="capture-actions">
         <Button
           variant="primary"
           size="lg"
           icon="note"
           :loading="isLoading"
-          :disabled="!noteText.trim() || isLoading"
+          :disabled="!noteText.trim()"
           @click="handleSave"
         >
-          Save & Classify
+          Save Note
         </Button>
 
-        <Button
-          variant="secondary"
-          size="lg"
-          :disabled="!noteText.trim()"
-          @click="noteText = ''"
+        <span
+          v-if="noteText.trim()"
+          :style="{
+            fontSize: typography.fontSize.sm,
+            color: colors.text.muted,
+            alignSelf: 'center'
+          }"
         >
-          Clear
-        </Button>
+          or press ⌘+Enter
+        </span>
       </div>
 
       <!-- Error message -->
@@ -104,56 +100,17 @@ const characterCount = computed(() => noteText.value.length)
         ✗ {{ error }}
       </div>
 
-      <!-- Success result -->
+      <!-- Info message -->
       <div
-        v-if="result"
-        class="capture-result"
-        :style="resultStyle"
+        v-if="!error"
+        :style="{
+          marginTop: spacing[4],
+          fontSize: typography.fontSize.sm,
+          color: colors.text.muted
+        }"
       >
-        <div class="capture-result__header">
-          <span :style="{ fontSize: typography.fontSize.lg }">✓</span>
-          <h3 :style="{ fontSize: typography.fontSize.xl, fontWeight: typography.fontWeight.semibold }">
-            {{ result.title }}
-          </h3>
-        </div>
-
-        <!-- Dimension badges -->
-        <div class="capture-result__dimensions">
-          <Badge
-            v-for="dimension in activeDimensions"
-            :key="dimension"
-            :dimension="dimension"
-          />
-        </div>
-
-        <!-- Tags -->
-        <div
-          v-if="result.tags.length > 0"
-          class="capture-result__tags"
-          :style="{ marginTop: spacing[3] }"
-        >
-          <span :style="{ fontSize: typography.fontSize.sm, color: colors.text.muted }">
-            Tags:
-          </span>
-          <span
-            v-for="tag in result.tags"
-            :key="tag"
-            :style="{
-              fontSize: typography.fontSize.sm,
-              color: colors.text.secondary,
-              padding: `${spacing[1]} ${spacing[2]}`,
-              backgroundColor: colors.background.hover,
-              borderRadius: borderRadius.base,
-            }"
-          >
-            {{ tag }}
-          </span>
-        </div>
-
-        <!-- File path -->
-        <div :style="{ marginTop: spacing[3], fontSize: typography.fontSize.sm, color: colors.text.muted }">
-          Saved to: {{ result.path.split('/').pop() }}
-        </div>
+        💡 Your notes are automatically enriched with dimensions, tags, and metadata.
+        View classification results in the Search view.
       </div>
     </div>
   </div>
@@ -171,7 +128,7 @@ const textareaStyle = {
   color: colors.text.primary,
   border: `1px solid ${colors.border.default}`,
   borderRadius: borderRadius.lg,
-  resize: 'vertical',
+  resize: 'vertical' as const,
   transition: 'all 200ms ease',
 }
 
@@ -182,14 +139,6 @@ const statusErrorStyle = {
   border: `1px solid ${colors.status.error}`,
   borderRadius: borderRadius.lg,
   marginTop: spacing[4],
-}
-
-const resultStyle = {
-  marginTop: spacing[6],
-  padding: spacing[6],
-  backgroundColor: colors.background.card,
-  border: `2px solid ${colors.status.success}`,
-  borderRadius: borderRadius.xl,
 }
 </script>
 
@@ -218,35 +167,25 @@ const resultStyle = {
   box-shadow: 0 0 0 3px rgba(212, 122, 68, 0.1);
 }
 
-.capture-textarea:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .capture-actions {
   display: flex;
   gap: v-bind('spacing[4]');
+  align-items: center;
   margin-top: v-bind('spacing[4]');
 }
 
-.capture-result__header {
-  display: flex;
-  align-items: center;
-  gap: v-bind('spacing[3]');
-  color: v-bind('colors.status.success');
+.capture-status {
+  animation: slideIn 200ms ease;
 }
 
-.capture-result__dimensions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: v-bind('spacing[2]');
-  margin-top: v-bind('spacing[4]');
-}
-
-.capture-result__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: v-bind('spacing[2]');
-  align-items: center;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
