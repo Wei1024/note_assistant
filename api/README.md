@@ -104,16 +104,56 @@ Check if the API server is running and which LLM model is configured.
 
 ### Note Capture
 
-#### 1. Classify and Save Note
+#### 1. Fast Save (Recommended)
 
-**POST** `/classify_and_save`
+**POST** `/save_fast`
 
-Captures a note with full LLM classification and enrichment. This is the **primary endpoint** for creating notes.
+**⚡ Instant save with background enrichment.** Best for user experience - returns immediately while LLM processes in background.
 
 **Request Body:**
 ```json
 {
   "text": "Meeting with Sarah tomorrow at 3pm to discuss the new authentication system. She suggested using OAuth2 with JWT tokens."
+}
+```
+
+**Response (0.03s):**
+```json
+{
+  "title": "Meeting with Sarah tomorrow at 3pm to discuss the new auth",
+  "dimensions": {},
+  "tags": [],
+  "path": "/Users/you/Notes/2025-10-16T15:30:00-abc123.md"
+}
+```
+
+**How it works:**
+1. **Immediately** saves note with basic title (first line)
+2. **Instantly** returns response to user (~30ms)
+3. **Background task** runs LLM classification & enrichment (~13s)
+4. **Updates** note file frontmatter with LLM-generated metadata
+5. **Filename never changes** (timestamp-based, stable references)
+
+**Benefits:**
+- Instant feedback - user doesn't wait
+- Note is searchable immediately
+- Metadata improves over time
+- Same quality as `/classify_and_save`, just async
+
+**Duration:** ~0.03s response, enrichment completes in background
+
+---
+
+#### 2. Classify and Save Note (Blocking)
+
+**POST** `/classify_and_save`
+
+Captures a note with full LLM classification and enrichment **before** returning. User waits for full processing.
+
+**Request Body:**
+```json
+{
+  "text": "Meeting with Sarah tomorrow at 3pm to discuss the new authentication system."
 }
 ```
 
@@ -128,7 +168,7 @@ Captures a note with full LLM classification and enrichment. This is the **prima
     "is_knowledge": true,
     "is_exploratory": false
   },
-  "tags": ["meeting", "authentication", "oauth2", "jwt"],
+  "tags": ["meeting", "authentication", "oauth2"],
   "path": "/Users/you/Notes/2025-10-16-meeting-with-sarah-on-authentication.md"
 }
 ```
@@ -136,15 +176,17 @@ Captures a note with full LLM classification and enrichment. This is the **prima
 **Processing Flow:**
 1. LLM classifies note (dimensions, title, tags, status)
 2. LLM enriches metadata (people, entities, emotions, time refs)
-3. Markdown file created in flat structure
+3. Markdown file created with full metadata
 4. Database indexed (FTS5 + metadata tables)
-5. Returns classification result
+5. Returns complete classification result
 
-**Duration:** ~3-5 seconds (LLM-dependent)
+**Duration:** ~13 seconds (user waits for LLM)
+
+**Use when:** You need metadata immediately (e.g., display tags before navigation)
 
 ---
 
-#### 2. Save Journal Entry
+#### 3. Save Journal Entry
 
 **POST** `/save_journal`
 
@@ -665,11 +707,12 @@ Same as `/search/graph` but via GET request.
 | Endpoint | Typical Duration | Bottleneck | Notes |
 |----------|-----------------|------------|-------|
 | `/health` | <10ms | None | - |
+| `/save_fast` | **~30ms** | None | **⚡ Recommended - instant response** |
 | `/search_fast` | <100ms | FTS5 query | - |
 | `/search_smart` | 1-2s | LLM parsing | - |
 | `/synthesize` | 2-4s | LLM synthesis + search | Full response at end |
 | `/synthesize/stream` | 2-4s | LLM synthesis + search | Progressive chunks (SSE) |
-| `/classify_and_save` | 3-5s | LLM classification + enrichment | - |
+| `/classify_and_save` | ~13s | LLM classification + enrichment | Blocking (user waits) |
 | `/consolidate/{note_id}` | 4-5s | LLM link suggestion (99.85%) | - |
 | `/search/graph` | <100ms | Database query | - |
 

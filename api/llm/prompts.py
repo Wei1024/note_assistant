@@ -77,274 +77,45 @@ JSON:"""
     # ENRICHMENT PROMPTS
     # ========================================================================
 
-    ENRICH_METADATA = """## Identity
+    ENRICH_METADATA = """Extract metadata from this note for search and knowledge graph.
 
-You are a metadata extraction agent for a brain-based note-taking system. Your goal is to extract multi-dimensional metadata from notes to enable rich search and knowledge graph connections.
+Note: {text}
+Context: {primary_context}
 
-Note content: {text}
+Extract boolean dimensions (same as classification) and entities:
 
-Primary context: {primary_context}
-
----
-
-## Extraction Guidelines
-
-First, extract boolean dimensions that describe the note's nature:
-
-### Boolean Dimensions
-
-**has_action_items**
-- Does this note contain actionable todos, tasks, or deadlines?
-- True if: "Need to...", "TODO:", deadlines, action items
-- False if: pure reflection, discussion, learning
-
-**is_social**
-- Does this note involve conversations with other people?
-- True if: meetings, discussions, "met with X", "talked to Y"
-- False if: solo work, personal thoughts
-
-**is_emotional**
-- Does this note express feelings or emotions?
-- True if: feeling words, emotional processing, reflections on mood
-- False if: purely factual, no emotional content
-
-**is_knowledge**
-- Does this note contain learnings, how-tos, or reference material?
-- True if: explanations, tutorials, "learned that...", "how to..."
-- False if: just actions or feelings without learnings
-
-**is_exploratory**
-- Does this note contain brainstorming or "what if" thinking?
-- True if: ideas, hypotheses, explorations, possibilities
-- False if: concrete actions or facts
-
-Then, extract entities from the note:
-
-### people
-Extract ALL person names mentioned in the note.
-- Extract proper names: "Sarah", "Charlotte", "Alex", "Dr. Smith"
-- Extract even if mentioned casually: "Charlotte and I", "met with Sarah"
-- Include role/expertise if mentioned: "psychology researcher", "team lead"
-- Include relationship context if clear: "expert contact", "colleague", "friend"
+**people**: Person names with optional role/relation
 - Format: {{"name": "...", "role": "...", "relation": "..."}}
-- Role and relation are optional - name alone is fine
+- Extract ALL names, even casual mentions
 
-### entities
-All notable things mentioned: concepts, tools, projects, topics, technologies.
-- Extract specific, searchable items without categorizing them
-- Examples: "human memory", "FAISS", "note-taking app", "SQLite FTS5", "Python"
-- Include any named thing: concepts, tools, frameworks, projects, topics, technical systems
-- Prefer specific terms over generic ones
-- Multiple related entities are fine: ["memory consolidation", "hippocampus", "neuroscience", "Python"]
-- Don't categorize - just extract what's clearly present
+**entities**: Concepts, tools, projects, topics mentioned
+- Be specific: "FAISS", "memory consolidation", "Python"
+- Don't categorize, just extract what's present
 
-### emotions
-Emotional markers or mood indicators expressed in the note.
-- Extract any feeling or emotion word the user expresses
-- Common examples: excited, frustrated, anxious, grateful, overwhelmed, curious, proud, happy, worried
-- But not limited to these - extract whatever emotion is clearly present
-- Only if clearly expressed in the text
+**emotions**: Feeling words if clearly expressed
+- Examples: excited, frustrated, anxious, grateful
 
-### time_references
-Dates, times, deadlines, scheduled events mentioned.
-- Parse into structured format when possible
-- Types: meeting, deadline, reminder, event
-- Include ISO datetime if parseable from context
-- Format: {{"type": "meeting", "datetime": "2025-10-11T15:00:00", "description": "meeting with Sarah"}}
+**time_references**: Dates, deadlines, meetings
+- Format: {{"type": "meeting|deadline", "datetime": null, "description": "..."}}
 
----
-
-## Examples
-
-**Example 1 - Meeting note with person:**
-
-Input:
-"Met with Sarah today to discuss memory consolidation research. She explained how the hippocampus works during sleep. Very insightful discussion about neuroscience and software design patterns."
-
-Primary classification: meetings
-
-Output:
+Example output format:
 {{{{
   "has_action_items": false,
   "is_social": true,
   "is_emotional": false,
   "is_knowledge": true,
   "is_exploratory": false,
-  "people": [
-    {{{{"name": "Sarah", "role": "researcher", "relation": "expert contact"}}}}
-  ],
-  "entities": ["memory consolidation", "hippocampus", "neuroscience", "software design"],
+  "people": [{{{{"name": "Sarah", "role": "researcher", "relation": "expert"}}}}],
+  "entities": ["memory consolidation", "hippocampus"],
   "emotions": [],
   "time_references": [],
-  "reasoning": "Meeting with Sarah (is_social=true). Contains learnings about neuroscience (is_knowledge=true). No action items, no emotional content, not exploratory."
+  "reasoning": "Brief explanation"
 }}}}
 
-**Example 2 - Casual mention of person:**
-
-Input:
-"Charlotte and I had a great time exploring Port Moody park today. Beautiful scenery and good Korean food afterward."
-
-Primary classification: journal
-
-Output:
-{{{{
-  "has_action_items": false,
-  "is_social": true,
-  "is_emotional": false,
-  "is_knowledge": false,
-  "is_exploratory": false,
-  "people": [
-    {{{{"name": "Charlotte", "role": "", "relation": ""}}}}
-  ],
-  "entities": ["Port Moody park", "Korean food"],
-  "emotions": [],
-  "time_references": [],
-  "reasoning": "Social activity with Charlotte (is_social=true). Simple journal entry, no other dimensions active."
-}}}}
-
-**Example 3 - Technical note:**
-
-Input:
-"Researching FAISS vector database for similarity search. Comparing with Pinecone and Weaviate. Python implementation looks straightforward with numpy arrays."
-
-Primary classification: reference
-
-Output:
-{{{{
-  "has_action_items": false,
-  "is_social": false,
-  "is_emotional": false,
-  "is_knowledge": true,
-  "is_exploratory": true,
-  "people": [],
-  "entities": ["FAISS", "Pinecone", "Weaviate", "Python", "numpy", "vector database", "similarity search"],
-  "emotions": [],
-  "time_references": [],
-  "reasoning": "Research note comparing vector databases (is_knowledge=true). Exploring different options (is_exploratory=true)."
-}}}}
-
-**Example 4 - Task with emotion:**
-
-Input:
-"Need to fix the authentication bug by Friday. Feeling overwhelmed with all the deadlines piling up. Also need to follow up with Alex about the database migration."
-
-Primary classification: tasks
-
-Output:
-{{{{
-  "has_action_items": true,
-  "is_social": false,
-  "is_emotional": true,
-  "is_knowledge": false,
-  "is_exploratory": false,
-  "people": [
-    {{{{"name": "Alex", "role": "", "relation": ""}}}}
-  ],
-  "entities": ["authentication", "database migration"],
-  "emotions": ["overwhelmed"],
-  "time_references": [
-    {{{{"type": "deadline", "datetime": null, "description": "fix authentication bug by Friday"}}}}
-  ],
-  "reasoning": "Task with deadlines (has_action_items=true). Expresses feeling overwhelmed (is_emotional=true). Mentions Alex for follow-up."
-}}}}
-
-**Example 5 - Project idea:**
-
-Input:
-"What if we used Redis for caching API responses? Could significantly improve performance for the note-taking app. Need to benchmark against current SQLite queries."
-
-Primary classification: ideas
-
-Output:
-{{{{
-  "has_action_items": true,
-  "is_social": false,
-  "is_emotional": false,
-  "is_knowledge": false,
-  "is_exploratory": true,
-  "people": [],
-  "entities": ["Redis", "SQLite", "caching", "API performance", "note-taking app"],
-  "emotions": [],
-  "time_references": [],
-  "reasoning": "Brainstorming idea (is_exploratory=true). Includes action item to benchmark (has_action_items=true)."
-}}}}
-
-**Example 6 - Empty extraction:**
-
-Input:
-"Random thought: need to buy groceries later."
-
-Primary classification: journal
-
-Output:
-{{{{
-  "has_action_items": true,
-  "is_social": false,
-  "is_emotional": false,
-  "is_knowledge": false,
-  "is_exploratory": false,
-  "people": [],
-  "entities": [],
-  "emotions": [],
-  "time_references": [],
-  "reasoning": "Simple action item (has_action_items=true). No other dimensions active."
-}}}}
-
-**Example 7 - Multiple people and emotions:**
-
-Input:
-"Excited to start the new ML project with Sarah and Dr. Chen! First team meeting tomorrow at 2pm. A bit anxious about the tight deadline but confident in the team."
-
-Primary classification: journal
-
-Output:
-{{{{
-  "has_action_items": false,
-  "is_social": true,
-  "is_emotional": true,
-  "is_knowledge": false,
-  "is_exploratory": false,
-  "people": [
-    {{{{"name": "Sarah", "role": "", "relation": "team member"}}}},
-    {{{{"name": "Dr. Chen", "role": "doctor", "relation": "team member"}}}}
-  ],
-  "entities": ["machine learning", "ML project"],
-  "emotions": ["excited", "anxious", "confident"],
-  "time_references": [
-    {{{{"type": "meeting", "datetime": null, "description": "team meeting tomorrow at 2pm"}}}}
-  ],
-  "reasoning": "Team meeting scheduled (is_social=true). Strong emotional content: excited, anxious, confident (is_emotional=true). Not exploratory or knowledge-focused."
-}}}}
-
----
-
-## Important Notes
-
-**Extraction philosophy:**
-Extract entities that are CLEARLY present in the text. Don't infer or assume information. Empty arrays are perfectly fine if nothing found.
-
-**People extraction:**
-Extract ALL proper names, even if mentioned casually ("Charlotte and I", "met with Alex"). Role and relation are optional metadata - extracting the name alone is valuable.
-
-**Entities are flexible:**
-No need to categorize entities as topic/tech/project. Just extract what's clearly present: concepts, tools, projects, topics - all go in the same entities array.
-
-**Boolean dimensions are independent:**
-Multiple dimensions can be true simultaneously. A note can be social AND emotional AND have action items. This is the power of multi-dimensional classification.
-
-**Emotions are flexible:**
-Extract any feeling word expressed. Don't limit to a predefined list - if the user expresses it, extract it.
-
-**Be conservative:**
-Better to miss an entity than to hallucinate. When uncertain, leave it out.
-
-**Return format:**
-Return ONLY the JSON object with all fields:
-- 5 boolean dimensions (has_action_items, is_social, is_emotional, is_knowledge, is_exploratory)
-- people, entities, emotions, time_references arrays
-- reasoning string
-
-No additional text or explanation outside the JSON.
+Rules:
+- Extract only what's CLEARLY present (empty arrays OK)
+- Multiple dimensions can be true
+- Return ONLY JSON with: 5 dimensions, people, entities, emotions, time_references, reasoning
 
 JSON:"""
 

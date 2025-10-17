@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from langchain_core.caches import InMemoryCache
@@ -121,6 +121,95 @@ async def classify_and_save(req: ClassifyRequest):
             tags=[],
             path=filepath
         )
+
+async def enrich_note_background(note_id: str, note_path: str, note_text: str):
+    """Background task to classify and enrich a note after it's been saved.
+
+    Updates the note file and database with LLM-generated metadata.
+    """
+    try:
+        # Step 1: Classify
+        result = await classify_note_async(note_text)
+
+        # Step 2: Enrich
+        enrichment = None
+        try:
+            enrichment = await enrich_note_metadata(note_text, result)
+        except Exception as e:
+            print(f"Background enrichment failed for {note_id}: {e}")
+            enrichment = {}
+
+        # Step 3: Update note file with better title/tags
+        import re
+        with open(note_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Update frontmatter
+        if content.startswith('---'):
+            parts = content.split('---', 2)
+            if len(parts) >= 3:
+                # Update title and tags in frontmatter
+                frontmatter = parts[1]
+                frontmatter = re.sub(r'title:.*', f'title: {result["title"]}', frontmatter)
+                tags_str = ', '.join(result.get('tags', []))
+                frontmatter = re.sub(r'tags:.*', f'tags: {tags_str}', frontmatter)
+
+                # Add status if present
+                if result.get('status'):
+                    if 'status:' in frontmatter:
+                        frontmatter = re.sub(r'status:.*', f'status: {result["status"]}', frontmatter)
+                    else:
+                        frontmatter += f'\nstatus: {result["status"]}'
+
+                content = f'---{frontmatter}---{parts[2]}'
+
+                with open(note_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+        # Step 4: Store enrichment in database
+        if enrichment:
+            try:
+                con = sqlite3.connect(DB_PATH)
+                store_enrichment_metadata(note_id, enrichment, con)
+                con.close()
+            except Exception as e:
+                print(f"Failed to store enrichment for {note_id}: {e}")
+
+        print(f"✓ Background enrichment complete for {note_id}")
+
+    except Exception as e:
+        print(f"Background enrichment failed for {note_id}: {e}")
+
+
+@app.post("/save_fast", response_model=ClassifyResponse)
+async def save_fast(req: ClassifyRequest, background_tasks: BackgroundTasks):
+    """Save note immediately, classify in background.
+
+    Returns instantly with basic metadata. Background task enriches
+    the note with LLM-generated title, tags, dimensions, and entities.
+
+    Use this for better UX - user gets immediate feedback while
+    classification happens asynchronously.
+    """
+    # Save immediately with basic title (first line)
+    first_line = req.text.split("\n")[0][:60].strip()
+
+    note_id, filepath, title = write_markdown(
+        title=first_line or "Untitled note",
+        tags=[],
+        body=req.text
+    )
+
+    # Enrich in background
+    background_tasks.add_task(enrich_note_background, note_id, filepath, req.text)
+
+    return ClassifyResponse(
+        title=title,
+        dimensions=DimensionFlags(),  # Will be updated by background task
+        tags=[],
+        path=filepath
+    )
+
 
 @app.post("/save_journal", response_model=ClassifyResponse)
 async def save_journal(req: ClassifyRequest):
