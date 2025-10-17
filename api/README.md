@@ -209,7 +209,53 @@ Natural language search that parses intent and searches across multiple dimensio
 
 ---
 
-#### 2. Keyword Search (Fast)
+#### 2. Synthesis (Summarize Findings)
+
+**POST** `/synthesize`
+
+Synthesizes search results into a coherent summary that answers your natural language question. Combines smart search with LLM-powered summarization.
+
+**Request Body:**
+```json
+{
+  "query": "what did I learn about memory consolidation?",
+  "limit": 10
+}
+```
+
+**Response:**
+```json
+{
+  "query": "what did I learn about memory consolidation?",
+  "summary": "Based on your notes, you learned that memory consolidation happens primarily during sleep, when the hippocampus replays memories and transfers them to long-term storage. Note 1 mentions a conversation with Sarah about how this process mirrors software caching patterns. Note 2 explores the idea of applying these neuroscience principles to note-taking systems...",
+  "notes_analyzed": 3,
+  "search_results": [
+    {
+      "path": "/Users/you/Notes/2025-10-16-memory-consolidation.md",
+      "snippet": "Memory <b>consolidation</b> during sleep...",
+      "score": 0.95,
+      "metadata": {...}
+    }
+  ]
+}
+```
+
+**How it works:**
+1. Executes smart search with your natural language query
+2. Reads full content of top 5 matching notes
+3. LLM analyzes and synthesizes findings into a coherent answer
+4. Returns summary + original search results for reference
+
+**Use cases:**
+- "What did I learn about vector databases?"
+- "What are my key insights from meetings with Sarah?"
+- "Summarize my thoughts on the authentication refactor"
+
+**Duration:** ~2-4 seconds (smart search + LLM synthesis)
+
+---
+
+#### 3. Keyword Search (Fast)
 
 **POST** `/search` or `/search_fast`
 
@@ -234,7 +280,7 @@ Direct FTS5 keyword search without LLM parsing.
 
 ---
 
-#### 3. Search by Dimensions
+#### 4. Search by Dimensions
 
 **POST** `/search/dimensions`
 
@@ -261,7 +307,7 @@ Filter notes by specific dimension values.
 
 ---
 
-#### 4. Search by Entity
+#### 5. Search by Entity
 
 **POST** `/search/entities`
 
@@ -287,7 +333,7 @@ Find notes mentioning specific people, topics, or technologies.
 
 ---
 
-#### 5. Search by Person (Convenience)
+#### 6. Search by Person (Convenience)
 
 **POST** `/search/person`
 
@@ -491,6 +537,17 @@ Same as `/search/graph` but via GET request.
 }
 ```
 
+### SynthesisResponse
+
+```typescript
+{
+  query: string;              // Original user query
+  summary: string;            // LLM-generated synthesis
+  notes_analyzed: number;     // Number of notes used for synthesis
+  search_results: SearchHit[]; // Full search results for reference
+}
+```
+
 ---
 
 ## Error Handling
@@ -541,6 +598,7 @@ Same as `/search/graph` but via GET request.
 | `/health` | <10ms | None |
 | `/search_fast` | <100ms | FTS5 query |
 | `/search_smart` | 1-2s | LLM parsing |
+| `/synthesize` | 2-4s | LLM synthesis + search |
 | `/classify_and_save` | 3-5s | LLM classification + enrichment |
 | `/consolidate/{note_id}` | 4-5s | LLM link suggestion (99.85%) |
 | `/search/graph` | <100ms | Database query |

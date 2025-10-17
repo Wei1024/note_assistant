@@ -57,3 +57,13 @@ class GraphSearchRequest(BaseModel):
 class GraphData(BaseModel):
     nodes: List[dict]
     edges: List[dict]
+
+class SynthesisRequest(BaseModel):
+    query: str
+    limit: int = 10
+
+class SynthesisResponse(BaseModel):
+    query: str
+    summary: str
+    notes_analyzed: int
+    search_results: List[SearchHit]

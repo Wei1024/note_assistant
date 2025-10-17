@@ -533,6 +533,28 @@ Return ONLY the JSON object with all six fields (person, emotion, entity, contex
 JSON:"""
 
     # ========================================================================
+    # SYNTHESIS PROMPTS
+    # ========================================================================
+
+    SYNTHESIZE_NOTES = """You are a note synthesis assistant. The user asked: "{query}"
+
+I found {notes_count} relevant notes. Please provide a concise summary answering their question based on these notes.
+
+{notes_context}
+
+---
+
+Instructions:
+1. Directly answer the user's question: "{query}"
+2. Synthesize information across all notes (don't just list them)
+3. Highlight key findings, people, concepts, or insights
+4. Keep the summary focused and concise (2-4 paragraphs max)
+5. If multiple notes contradict each other, acknowledge different perspectives
+6. Reference specific notes when relevant (e.g., "Note 1 mentions...")
+
+Summary:"""
+
+    # ========================================================================
     # CONSOLIDATION PROMPTS
     # ========================================================================
 

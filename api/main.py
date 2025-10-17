@@ -7,12 +7,13 @@ from .llm import initialize_llm, shutdown_llm
 from .models import (
     ClassifyRequest, ClassifyResponse, DimensionFlags, SearchRequest, SearchHit, UpdateStatusRequest,
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
-    GraphSearchRequest, GraphData
+    GraphSearchRequest, GraphData, SynthesisRequest, SynthesisResponse
 )
 from .services.capture import classify_note_async
 from .services.search import search_notes_smart
 from .services.enrichment import enrich_note_metadata, store_enrichment_metadata
 from .services.consolidation import consolidate_daily_notes, consolidate_note
+from .services.synthesis import synthesize_search_results
 from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
     search_graph, get_graph_visualization
@@ -173,6 +174,32 @@ async def search_fast(req: SearchRequest):
     """
     results = await search_notes_smart(req.query, req.limit, req.status)
     return [SearchHit(**r) for r in results]
+
+@app.post("/synthesize", response_model=SynthesisResponse)
+async def synthesize(req: SynthesisRequest):
+    """Synthesize search results into a coherent summary.
+
+    Uses smart search to find relevant notes, then generates an LLM-powered
+    summary that answers the user's natural language query.
+
+    Request body:
+    {
+        "query": "what did I learn about memory consolidation?",
+        "limit": 10
+    }
+
+    Returns:
+    {
+        "query": "what did I learn about memory consolidation?",
+        "summary": "Based on your notes, you learned...",
+        "notes_analyzed": 3,
+        "search_results": [...]
+    }
+
+    Duration: ~2-4 seconds (search + LLM synthesis)
+    """
+    result = await synthesize_search_results(req.query, req.limit)
+    return SynthesisResponse(**result)
 
 @app.patch("/notes/status")
 async def update_status(req: UpdateStatusRequest):
