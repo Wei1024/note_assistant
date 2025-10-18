@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
 import { marked } from 'marked'
 import { useKnowledgeGraph } from '@/composables/useKnowledgeGraph'
@@ -29,6 +29,10 @@ const svgRef = ref<SVGSVGElement | null>(null)
 const minLinks = ref(1) // For full graph: only show notes with links
 const graphLimit = ref(100) // For full graph: max nodes
 
+// Floating card position
+const cardPosition = ref({ x: 0, y: 0 })
+const cardVisible = ref(false)
+
 /**
  * Render markdown content as HTML
  */
@@ -41,6 +45,8 @@ const renderedContent = computed(() => {
 // D3 Simulation & Rendering
 // ========================================
 let simulation: d3.Simulation<d3.SimulationNodeDatum, undefined> | null = null
+let currentZoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null
+let currentSvg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null
 
 /**
  * Get dominant dimension color for a node
@@ -80,12 +86,92 @@ function getNodeTitle(node: GraphNode): string {
 }
 
 /**
+ * Position floating card near clicked node
+ */
+function positionCard(event: MouseEvent) {
+  if (!svgRef.value) return
+
+  const cardWidth = 400 // Approximate card width
+  const cardHeight = 500 // Approximate card height
+  const offset = 20 // Offset from node
+
+  // Get click position relative to viewport
+  const clickX = event.clientX
+  const clickY = event.clientY
+
+  // Calculate initial position (offset to the right and down)
+  let x = clickX + offset
+  let y = clickY + offset
+
+  // Check if card would go off-screen on the right
+  if (x + cardWidth > window.innerWidth) {
+    x = clickX - cardWidth - offset // Position to the left instead
+  }
+
+  // Check if card would go off-screen on the bottom
+  if (y + cardHeight > window.innerHeight) {
+    y = window.innerHeight - cardHeight - 20 // Position at bottom with margin
+  }
+
+  // Keep card within bounds
+  x = Math.max(20, x) // Minimum 20px from left edge
+  y = Math.max(20, y) // Minimum 20px from top edge
+
+  cardPosition.value = { x, y }
+  cardVisible.value = true
+}
+
+/**
+ * Cleanup graph resources
+ */
+function cleanupGraph() {
+  if (simulation) {
+    simulation.stop()
+    simulation = null
+  }
+  currentZoom = null
+  currentSvg = null
+}
+
+/**
+ * Hide floating card
+ */
+function hideCard() {
+  cardVisible.value = false
+  clearSelection()
+}
+
+/**
+ * Center and zoom to a clicked node
+ */
+function centerOnNode(node: GraphNode) {
+  if (!node.x || !node.y || !currentSvg || !currentZoom || !svgRef.value) return
+
+  const width = svgRef.value.clientWidth
+  const height = svgRef.value.clientHeight
+  const scale = 1.5
+
+  const transform = d3.zoomIdentity
+    .translate(width / 2, height / 2)
+    .scale(scale)
+    .translate(-node.x, -node.y)
+
+  currentSvg.transition()
+    .duration(750)
+    .call(currentZoom.transform, transform)
+}
+
+/**
  * Render force-directed graph with D3
  */
 function renderGraph() {
   if (!svgRef.value || !graphData.value) return
 
+  // Cleanup old simulation before creating new one
+  cleanupGraph()
+
   const svg = d3.select(svgRef.value)
+  currentSvg = svg
   const width = svgRef.value.clientWidth
   const height = svgRef.value.clientHeight
 
@@ -102,6 +188,7 @@ function renderGraph() {
       g.attr('transform', event.transform)
     })
 
+  currentZoom = zoom
   svg.call(zoom)
 
   const { nodes, edges } = graphData.value
@@ -173,9 +260,12 @@ function renderGraph() {
     .attr('stroke', colors.background.card)
     .attr('stroke-width', graph.node.strokeWidth)
     .style('cursor', 'pointer')
-    .on('click', (_, d: GraphNode) => {
+    .on('click', (event: MouseEvent, d: GraphNode) => {
+      event.stopPropagation() // Prevent event bubbling
       selectNode(d.id)
       updateSelection()
+      positionCard(event)
+      centerOnNode(d)
     })
     .on('mouseenter', function(this: SVGCircleElement) {
       d3.select(this)
@@ -311,16 +401,15 @@ onMounted(async () => {
   await loadFullGraph(minLinks.value, undefined, graphLimit.value)
 })
 
+onBeforeUnmount(() => {
+  // Cleanup graph resources
+  cleanupGraph()
+})
+
 watch(graphData, async () => {
   if (graphData.value) {
     await nextTick()
     renderGraph()
-  }
-})
-
-watch(selectedNodeId, () => {
-  if (svgRef.value) {
-    renderGraph() // Re-render to update selection
   }
 })
 </script>
@@ -352,17 +441,15 @@ watch(selectedNodeId, () => {
       {{ error }}
     </div>
 
-    <!-- Main Content: Graph + Details Side-by-Side -->
-    <div class="main-content" :style="{ marginTop: spacing[4], display: 'flex', gap: spacing[4], alignItems: 'stretch' }">
-      <!-- Graph Canvas (Left) -->
+    <!-- Main Content: Full-Width Graph -->
+    <div class="main-content" :style="{ marginTop: spacing[4], position: 'relative' }">
+      <!-- Graph Canvas (Full Width) -->
       <div class="graph-canvas" :style="{
-        flex: selectedNode ? '1 1 65%' : '1 1 100%',
         position: 'relative',
         backgroundColor: colors.background.primary,
         borderRadius: '8px',
         overflow: 'hidden',
-        minHeight: '600px',
-        transition: 'flex 300ms ease'
+        minHeight: '600px'
       }">
         <svg
           ref="svgRef"
@@ -372,20 +459,26 @@ watch(selectedNodeId, () => {
         ></svg>
       </div>
 
-      <!-- Selected Node Details (Right Column) -->
+      <!-- Floating Node Details Card -->
       <aside
-        v-if="selectedNode"
-        class="details-panel"
+        v-if="selectedNode && cardVisible"
+        class="details-panel floating-card"
         :style="{
-          flex: '0 0 35%',
+          position: 'fixed',
+          left: `${cardPosition.x}px`,
+          top: `${cardPosition.y}px`,
+          width: '400px',
+          maxHeight: '500px',
           padding: spacing[4],
           backgroundColor: colors.background.card,
           borderRadius: '8px',
           border: `1px solid ${colors.border.subtle}`,
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '600px',
-          overflow: 'auto'
+          overflow: 'auto',
+          zIndex: 1000,
+          transition: 'left 200ms ease, top 200ms ease'
         }"
       >
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing[3] }">
@@ -393,7 +486,7 @@ watch(selectedNodeId, () => {
             {{ getNodeTitle(selectedNode) }}
           </h3>
           <button
-            @click="clearSelection"
+            @click="hideCard"
             :style="{
               padding: `${spacing[1]} ${spacing[2]}`,
               backgroundColor: 'transparent',
