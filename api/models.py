@@ -67,3 +67,13 @@ class SynthesisResponse(BaseModel):
     summary: str
     notes_analyzed: int
     search_results: List[SearchHit]
+
+class ConsolidateBatchRequest(BaseModel):
+    note_ids: List[str]
+
+class ConsolidateBatchResponse(BaseModel):
+    notes_processed: int
+    links_created: int
+    notes_with_links: int
+    started_at: str
+    completed_at: str

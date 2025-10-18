@@ -8,12 +8,13 @@ from .llm import initialize_llm, shutdown_llm
 from .models import (
     ClassifyRequest, ClassifyResponse, DimensionFlags, SearchRequest, SearchHit, UpdateStatusRequest,
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
-    GraphSearchRequest, GraphData, SynthesisRequest, SynthesisResponse
+    GraphSearchRequest, GraphData, SynthesisRequest, SynthesisResponse,
+    ConsolidateBatchRequest, ConsolidateBatchResponse
 )
 from .services.capture import classify_note_async
 from .services.search import search_notes_smart
 from .services.enrichment import enrich_note_metadata, store_enrichment_metadata
-from .services.consolidation import consolidate_daily_notes, consolidate_note
+from .services.consolidation import consolidate_daily_notes, consolidate_note, consolidate_notes
 from .services.synthesis import synthesize_search_results, synthesize_search_results_stream
 from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
@@ -368,6 +369,42 @@ async def update_status(req: UpdateStatusRequest):
     else:
         raise HTTPException(status_code=404, detail="Note not found or update failed")
 
+@app.post("/consolidate", response_model=ConsolidateBatchResponse)
+async def consolidate_batch(request: ConsolidateBatchRequest):
+    """Generic batch consolidation for any list of note IDs.
+
+    Processes notes sequentially - each can link to earlier notes in the batch.
+    This allows flexible note selection logic (all notes, unlinked notes, by date
+    range, by dimension, etc.) while keeping consolidation logic separate.
+
+    Args:
+        request: ConsolidateBatchRequest with note_ids list
+
+    Returns:
+        ConsolidateBatchResponse with:
+        {
+            "notes_processed": 5,
+            "links_created": 12,
+            "notes_with_links": 4,
+            "started_at": "2025-10-11T22:00:00",
+            "completed_at": "2025-10-11T22:00:15"
+        }
+    """
+    stats = await consolidate_notes(request.note_ids)
+    return stats
+
+
+@app.post("/consolidate/today", response_model=ConsolidateBatchResponse)
+async def consolidate_today():
+    """Convenience endpoint: Consolidate all of today's notes.
+
+    Returns:
+        ConsolidateBatchResponse with consolidation statistics
+    """
+    stats = await consolidate_daily_notes()
+    return stats
+
+
 @app.post("/consolidate/{note_id}")
 async def consolidate_single_note(note_id: str):
     """Consolidate a single note - find and create links to existing knowledge.
@@ -384,25 +421,6 @@ async def consolidate_single_note(note_id: str):
     """
     result = await consolidate_note(note_id)
     return result
-
-
-@app.post("/consolidate")
-async def consolidate_batch():
-    """Batch consolidate all of today's notes.
-
-    Processes notes sequentially - each can link to earlier notes in the batch.
-
-    Returns:
-        {
-            "notes_processed": 5,
-            "links_created": 12,
-            "notes_with_links": 4,
-            "started_at": "2025-10-11T22:00:00",
-            "completed_at": "2025-10-11T22:00:15"
-        }
-    """
-    stats = await consolidate_daily_notes()
-    return stats
 
 
 # ============================================================================
