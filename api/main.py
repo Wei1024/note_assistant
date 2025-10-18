@@ -19,6 +19,7 @@ from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
     search_graph, get_graph_visualization
 )
+from .graph import get_full_graph
 from .notes import write_markdown, update_note_status
 from .fts import search_notes
 from .db import ensure_db
@@ -484,6 +485,70 @@ async def get_note_graph(note_id: str, depth: int = 2):
     Returns graph data formatted for D3.js, Cytoscape, Vue Flow, etc.
     """
     graph = get_graph_visualization(note_id, depth=depth)
+    return GraphData(**graph)
+
+@app.get("/notes/{note_id}/content")
+async def get_note_content(note_id: str):
+    """Get the full markdown content of a note by its ID.
+
+    Args:
+        note_id: Note ID (e.g., "2025-10-12T16:01:08-07:00_ae68")
+
+    Returns:
+        JSON with 'content' (markdown text) and 'path' fields
+
+    Raises:
+        404: Note ID not found in database
+    """
+    # Get the file path from database
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
+    cur.execute("SELECT path FROM notes_meta WHERE id = ?", (note_id,))
+    row = cur.fetchone()
+    con.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Note {note_id} not found")
+
+    file_path = row[0]
+
+    # Read the markdown file
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return {"content": content, "path": file_path}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+@app.get("/graph/full", response_model=GraphData)
+async def get_full_corpus_graph(
+    min_links: int = 0,
+    dimension: str = None,
+    limit: int = 500
+):
+    """Get full corpus graph (all notes + links).
+
+    Query params:
+        - min_links: Only show notes with N+ connections (default: 0)
+        - dimension: Filter by dimension (e.g., "is_knowledge", "has_action_items")
+        - limit: Max nodes to return (default: 500, prevents browser overload)
+
+    Returns:
+        GraphData with all nodes and edges (filtered by params)
+
+    Examples:
+        /graph/full - All notes
+        /graph/full?min_links=1 - Only notes with links
+        /graph/full?dimension=is_knowledge - Only knowledge notes
+        /graph/full?limit=100 - First 100 notes
+    """
+    graph = get_full_graph(
+        min_links=min_links,
+        dimension_filter=dimension,
+        limit=limit
+    )
     return GraphData(**graph)
 
 # EXPERIMENTAL ENDPOINTS (not in production use)

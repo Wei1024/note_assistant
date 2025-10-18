@@ -63,13 +63,20 @@ export type SynthesisStreamEvent =
   | { type: 'done' }
 
 /**
- * Knowledge graph node
+ * Knowledge graph node (extends D3 SimulationNodeDatum for positioning)
  */
 export interface GraphNode {
   id: string            // Note ID (e.g., "2025-10-16T15:30:00-07:00_a27f")
   path: string
   created: string       // ISO timestamp
   dimensions: Dimensions
+  // D3 simulation properties (added at runtime)
+  x?: number
+  y?: number
+  vx?: number
+  vy?: number
+  fx?: number | null
+  fy?: number | null
 }
 
 /**

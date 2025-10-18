@@ -512,3 +512,115 @@ def get_graph_neighborhood(note_id: str, depth: int = 1) -> Dict:
         "nodes": nodes,
         "edges": edges
     }
+
+
+def get_full_graph(
+    min_links: int = 0,
+    dimension_filter: Optional[str] = None,
+    limit: Optional[int] = 500
+) -> Dict:
+    """Get full corpus graph (all notes and their links).
+
+    Args:
+        min_links: Only include notes with N+ connections (default: 0 = all notes)
+        dimension_filter: Filter by dimension flag (e.g., "is_knowledge", "has_action_items")
+        limit: Maximum number of nodes to return (default: 500, prevents browser overload)
+
+    Returns:
+        Dict with 'nodes' and 'edges' for graph visualization
+
+    Examples:
+        get_full_graph()  # All notes
+        get_full_graph(min_links=1)  # Only notes with links
+        get_full_graph(dimension_filter="is_knowledge")  # Only knowledge notes
+        get_full_graph(limit=100)  # First 100 notes
+    """
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
+
+    # Build query with filters
+    query = """
+        SELECT id, path, created, has_action_items, is_social,
+               is_emotional, is_knowledge, is_exploratory
+        FROM notes_meta
+    """
+
+    filters = []
+    params = []
+
+    # Filter by dimension
+    if dimension_filter:
+        filters.append(f"{dimension_filter} = 1")
+
+    # Filter by minimum link count
+    if min_links > 0:
+        filters.append("""
+            id IN (
+                SELECT note_id FROM (
+                    SELECT from_note_id AS note_id FROM notes_links
+                    UNION ALL
+                    SELECT to_note_id AS note_id FROM notes_links
+                )
+                GROUP BY note_id
+                HAVING COUNT(*) >= ?
+            )
+        """)
+        params.append(min_links)
+
+    if filters:
+        query += " WHERE " + " AND ".join(filters)
+
+    query += " ORDER BY created DESC"
+
+    if limit:
+        query += f" LIMIT {limit}"
+
+    # Get nodes
+    cur.execute(query, params)
+
+    nodes = [
+        {
+            "id": row[0],
+            "path": row[1],
+            "created": row[2],
+            "dimensions": {
+                "has_action_items": bool(row[3]),
+                "is_social": bool(row[4]),
+                "is_emotional": bool(row[5]),
+                "is_knowledge": bool(row[6]),
+                "is_exploratory": bool(row[7])
+            }
+        }
+        for row in cur.fetchall()
+    ]
+
+    # Get all node IDs for edge filtering
+    node_ids = {node["id"] for node in nodes}
+
+    # Get edges only between these nodes
+    if node_ids:
+        placeholders = ','.join('?' * len(node_ids))
+        cur.execute(f"""
+            SELECT from_note_id, to_note_id, link_type
+            FROM notes_links
+            WHERE from_note_id IN ({placeholders})
+              AND to_note_id IN ({placeholders})
+        """, list(node_ids) * 2)
+
+        edges = [
+            {
+                "from": row[0],
+                "to": row[1],
+                "type": row[2]
+            }
+            for row in cur.fetchall()
+        ]
+    else:
+        edges = []
+
+    con.close()
+
+    return {
+        "nodes": nodes,
+        "edges": edges
+    }
