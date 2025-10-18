@@ -475,6 +475,16 @@ async def consolidate_note(note_id: str) -> Dict:
     timings['store_links'] = time.time() - store_start
     timings['total'] = time.time() - start_time
 
+    # Update consolidated_at timestamp
+    con = sqlite3.connect(DB_PATH)
+    cur = con.cursor()
+    cur.execute(
+        "UPDATE notes_meta SET consolidated_at = ? WHERE id = ?",
+        (_iso_now(), note_id)
+    )
+    con.commit()
+    con.close()
+
     # Log performance metrics
     print(f"⏱️  Consolidation timings for {note_id[:20]}:")
     print(f"   DB query: {timings['db_query']:.2f}s")

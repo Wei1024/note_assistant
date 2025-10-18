@@ -46,7 +46,10 @@ def ensure_db():
             needs_review BOOLEAN DEFAULT 0,
             review_reason TEXT,
             reviewed_at TEXT,
-            original_classification TEXT
+            original_classification TEXT,
+
+            -- Consolidation tracking (Phase 3: Knowledge graph)
+            consolidated_at TEXT
         )
     """)
 
