@@ -20,21 +20,14 @@ const {
   loading,
   loadingContent,
   error,
-  loadGraph,
   loadFullGraph,
   selectNode,
   clearSelection,
 } = useKnowledgeGraph()
 
 const svgRef = ref<SVGSVGElement | null>(null)
-const depth = ref(2)
-const startNoteId = ref<string>('')
-const viewMode = ref<'ego' | 'full'>('ego')
 const minLinks = ref(1) // For full graph: only show notes with links
 const graphLimit = ref(100) // For full graph: max nodes
-
-// Demo note ID for testing (using a real note with links)
-const demoNoteId = '2025-10-12T16:01:08-07:00_ae68'
 
 /**
  * Render markdown content as HTML
@@ -314,9 +307,8 @@ function renderGraph() {
 // Lifecycle & Watchers
 // ========================================
 onMounted(async () => {
-  // Load demo graph on mount
-  startNoteId.value = demoNoteId
-  await loadGraph(demoNoteId, depth.value)
+  // Load full graph on mount
+  await loadFullGraph(minLinks.value, undefined, graphLimit.value)
 })
 
 watch(graphData, async () => {
@@ -331,33 +323,6 @@ watch(selectedNodeId, () => {
     renderGraph() // Re-render to update selection
   }
 })
-
-/**
- * Handle depth change (ego mode only)
- */
-async function handleDepthChange() {
-  if (startNoteId.value && viewMode.value === 'ego') {
-    await loadGraph(startNoteId.value, depth.value)
-  }
-}
-
-/**
- * Switch to ego-centric view
- */
-async function switchToEgoView() {
-  viewMode.value = 'ego'
-  if (demoNoteId) {
-    await loadGraph(demoNoteId, depth.value)
-  }
-}
-
-/**
- * Switch to full corpus view
- */
-async function switchToFullView() {
-  viewMode.value = 'full'
-  await loadFullGraph(minLinks.value, undefined, graphLimit.value)
-}
 </script>
 
 <template>
@@ -371,70 +336,8 @@ async function switchToFullView() {
 
     <!-- Controls -->
     <div class="controls" :style="{ marginTop: spacing[4], display: 'flex', gap: spacing[6], alignItems: 'center' }">
-      <!-- View Mode Toggle -->
-      <div class="control-group">
-        <label :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colors.text.secondary }">
-          View:
-        </label>
-        <div :style="{ display: 'flex', gap: spacing[2] }">
-          <button
-            @click="switchToEgoView"
-            :style="{
-              padding: `${spacing[2]} ${spacing[3]}`,
-              backgroundColor: viewMode === 'ego' ? colors.accent.primary : 'transparent',
-              color: viewMode === 'ego' ? colors.text.onDark : colors.text.primary,
-              border: `1px solid ${viewMode === 'ego' ? colors.accent.primary : colors.border.default}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              transition: 'all 200ms ease'
-            }"
-          >
-            Explore from Note
-          </button>
-          <button
-            @click="switchToFullView"
-            :style="{
-              padding: `${spacing[2]} ${spacing[3]}`,
-              backgroundColor: viewMode === 'full' ? colors.accent.primary : 'transparent',
-              color: viewMode === 'full' ? colors.text.onDark : colors.text.primary,
-              border: `1px solid ${viewMode === 'full' ? colors.accent.primary : colors.border.default}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium,
-              transition: 'all 200ms ease'
-            }"
-          >
-            Full Corpus
-          </button>
-        </div>
-      </div>
-
-      <!-- Depth Control (only for ego mode) -->
-      <div v-if="viewMode === 'ego'" class="control-group">
-        <label :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium, color: colors.text.secondary }">
-          Depth:
-        </label>
-        <div class="radio-group">
-          <label>
-            <input type="radio" v-model.number="depth" :value="1" @change="handleDepthChange" />
-            1
-          </label>
-          <label>
-            <input type="radio" v-model.number="depth" :value="2" @change="handleDepthChange" />
-            2
-          </label>
-          <label>
-            <input type="radio" v-model.number="depth" :value="3" @change="handleDepthChange" />
-            3
-          </label>
-        </div>
-      </div>
-
-      <!-- Node count info (for full mode) -->
-      <div v-if="viewMode === 'full' && graphData" :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary }">
+      <!-- Node count info -->
+      <div v-if="graphData" :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary }">
         {{ graphData.nodes.length }} notes, {{ graphData.edges.length }} connections
       </div>
     </div>
