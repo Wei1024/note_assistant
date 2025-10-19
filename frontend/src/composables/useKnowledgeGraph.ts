@@ -5,7 +5,7 @@
  * Provides methods to load ego-centric graph data from a starting note.
  */
 import { ref, computed } from 'vue'
-import type { GraphData, GraphNode, GraphEdge, GraphSearchRequest } from '@/types/api'
+import type { GraphData, GraphNode, GraphEdge, GraphSearchRequest, ClusteredGraphData, ClusterSummary } from '@/types/api'
 
 export function useKnowledgeGraph() {
   const graphData = ref<GraphData | null>(null)
@@ -14,6 +14,8 @@ export function useKnowledgeGraph() {
   const loading = ref(false)
   const loadingContent = ref(false)
   const error = ref<string | null>(null)
+  const clusters = ref<ClusterSummary[]>([])
+  const selectedClusterId = ref<number | null>(null)
 
   /**
    * Get the currently selected node
@@ -21,6 +23,14 @@ export function useKnowledgeGraph() {
   const selectedNode = computed<GraphNode | null>(() => {
     if (!selectedNodeId.value || !graphData.value) return null
     return graphData.value.nodes.find(node => node.id === selectedNodeId.value) || null
+  })
+
+  /**
+   * Get the currently selected cluster
+   */
+  const selectedCluster = computed<ClusterSummary | null>(() => {
+    if (selectedClusterId.value === null || !clusters.value.length) return null
+    return clusters.value.find(c => c.cluster_id === selectedClusterId.value) || null
   })
 
   /**
@@ -99,11 +109,59 @@ export function useKnowledgeGraph() {
 
       graphData.value = await response.json()
 
-      // Clear selection when loading full graph
+      // Clear selection and clusters when loading full graph
       selectedNodeId.value = null
+      selectedClusterId.value = null
+      clusters.value = []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Unknown error occurred'
       graphData.value = null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Load clustered graph with community detection
+   *
+   * @param minLinks - Only show notes with N+ connections
+   * @param limit - Max nodes to return
+   */
+  const loadClusteredGraph = async (
+    minLinks: number = 1,
+    limit: number = 100
+  ) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      const params = new URLSearchParams({
+        min_links: minLinks.toString(),
+        limit: limit.toString()
+      })
+
+      const response = await fetch(`http://localhost:8734/graph/clusters?${params}`)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to load clustered graph')
+      }
+
+      const data: ClusteredGraphData = await response.json()
+
+      graphData.value = {
+        nodes: data.nodes,
+        edges: data.edges
+      }
+      clusters.value = data.clusters
+
+      // Clear selections
+      selectedNodeId.value = null
+      selectedClusterId.value = null
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Unknown error occurred'
+      graphData.value = null
+      clusters.value = []
     } finally {
       loading.value = false
     }
@@ -145,11 +203,21 @@ export function useKnowledgeGraph() {
   }
 
   /**
+   * Select a cluster
+   */
+  const selectCluster = (clusterId: number) => {
+    selectedClusterId.value = clusterId
+    selectedNodeId.value = null
+    selectedNodeContent.value = null
+  }
+
+  /**
    * Clear selection
    */
   const clearSelection = () => {
     selectedNodeId.value = null
     selectedNodeContent.value = null
+    selectedClusterId.value = null
   }
 
   /**
@@ -158,6 +226,8 @@ export function useKnowledgeGraph() {
   const reset = () => {
     graphData.value = null
     selectedNodeId.value = null
+    selectedClusterId.value = null
+    clusters.value = []
     error.value = null
   }
 
@@ -170,11 +240,16 @@ export function useKnowledgeGraph() {
     loading,
     loadingContent,
     error,
+    clusters,
+    selectedCluster,
+    selectedClusterId,
 
     // Methods
     loadGraph,
     loadFullGraph,
+    loadClusteredGraph,
     selectNode,
+    selectCluster,
     clearSelection,
     reset
   }

@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
 import { marked } from 'marked'
 import { useKnowledgeGraph } from '@/composables/useKnowledgeGraph'
-import { colors, getDimensionColor } from '@/design/colors'
+import { colors, getDimensionColor, getClusterColor } from '@/design/colors'
 import { typography } from '@/design/typography'
 import { spacing } from '@/design/spacing'
 import { graph, getNodeRadius } from '@/design/graph'
@@ -20,14 +20,20 @@ const {
   loading,
   loadingContent,
   error,
+  clusters,
+  selectedCluster,
+  selectedClusterId,
   loadFullGraph,
+  loadClusteredGraph,
   selectNode,
+  selectCluster,
   clearSelection,
 } = useKnowledgeGraph()
 
 const svgRef = ref<SVGSVGElement | null>(null)
 const minLinks = ref(1) // For full graph: only show notes with links
 const graphLimit = ref(100) // For full graph: max nodes
+const showClusters = ref(false) // Toggle cluster view
 
 // Floating card position
 const cardPosition = ref({ x: 0, y: 0 })
@@ -49,10 +55,16 @@ let currentZoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null
 let currentSvg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null
 
 /**
- * Get dominant dimension color for a node
+ * Get node color based on current view mode
  */
-function getNodeColor(dimensions: Dimensions): string {
-  const activeDimensions = Object.entries(dimensions)
+function getNodeColor(node: GraphNode): string {
+  // Cluster mode: color by cluster_id
+  if (showClusters.value && node.cluster_id !== undefined) {
+    return getClusterColor(node.cluster_id)
+  }
+
+  // Dimension mode: color by dominant dimension
+  const activeDimensions = Object.entries(node.dimensions)
     .filter(([_, value]) => value === true)
 
   if (activeDimensions.length === 0) {
@@ -256,7 +268,7 @@ function renderGraph() {
     .enter()
     .append('circle')
     .attr('r', (d: GraphNode) => getNodeRadius(connectionCounts.get(d.id) || 0))
-    .attr('fill', (d: GraphNode) => getNodeColor(d.dimensions))
+    .attr('fill', (d: GraphNode) => getNodeColor(d))
     .attr('stroke', colors.background.card)
     .attr('stroke-width', graph.node.strokeWidth)
     .style('cursor', 'pointer')
@@ -394,11 +406,37 @@ function renderGraph() {
 }
 
 // ========================================
+// Cluster Interaction
+// ========================================
+function handleClusterClick(clusterId: number, event: MouseEvent) {
+  selectCluster(clusterId)
+  positionCard(event)
+  cardVisible.value = true
+}
+
+function truncateTheme(theme: string, maxLength: number = 50): string {
+  // Remove LLM artifacts
+  const cleaned = theme.replace(/^{\s*theme:\s*/, '').replace(/\s*}$/, '').trim()
+  return truncateText(cleaned, maxLength)
+}
+
+async function toggleClusterView() {
+  showClusters.value = !showClusters.value
+
+  if (showClusters.value) {
+    await loadClusteredGraph(minLinks.value, graphLimit.value)
+  } else {
+    await loadFullGraph(minLinks.value, undefined, graphLimit.value)
+  }
+}
+
+// ========================================
 // Lifecycle & Watchers
 // ========================================
 onMounted(async () => {
-  // Load full graph on mount
-  await loadFullGraph(minLinks.value, undefined, graphLimit.value)
+  // Load clustered graph by default
+  showClusters.value = true
+  await loadClusteredGraph(minLinks.value, graphLimit.value)
 })
 
 onBeforeUnmount(() => {
@@ -424,11 +462,31 @@ watch(graphData, async () => {
     </header>
 
     <!-- Controls -->
-    <div class="controls" :style="{ marginTop: spacing[4], display: 'flex', gap: spacing[6], alignItems: 'center' }">
+    <div class="controls" :style="{ marginTop: spacing[4], display: 'flex', gap: spacing[6], alignItems: 'center', justifyContent: 'space-between' }">
       <!-- Node count info -->
       <div v-if="graphData" :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary }">
         {{ graphData.nodes.length }} notes, {{ graphData.edges.length }} connections
+        <span v-if="showClusters && clusters.length" :style="{ marginLeft: spacing[3], color: colors.text.muted }">
+          | {{ clusters.length }} clusters
+        </span>
       </div>
+
+      <!-- View toggle -->
+      <button
+        @click="toggleClusterView"
+        :style="{
+          padding: `${spacing[2]} ${spacing[4]}`,
+          backgroundColor: showClusters ? colors.accent.primary : colors.background.hover,
+          color: showClusters ? colors.text.onDark : colors.text.primary,
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: typography.fontSize.sm,
+          fontWeight: typography.fontWeight.medium
+        }"
+      >
+        {{ showClusters ? 'Show Dimensions' : 'Show Clusters' }}
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -441,10 +499,58 @@ watch(graphData, async () => {
       {{ error }}
     </div>
 
-    <!-- Main Content: Full-Width Graph -->
-    <div class="main-content" :style="{ marginTop: spacing[4], position: 'relative' }">
-      <!-- Graph Canvas (Full Width) -->
+    <!-- Main Content: Cluster sidebar + Graph -->
+    <div class="main-content" :style="{ marginTop: spacing[4], position: 'relative', display: 'flex', gap: spacing[4] }">
+      <!-- Cluster List Sidebar -->
+      <aside
+        v-if="showClusters && clusters.length"
+        class="cluster-list"
+        :style="{
+          width: '220px',
+          flexShrink: 0,
+          maxHeight: '600px',
+          overflowY: 'auto',
+          padding: spacing[3],
+          backgroundColor: colors.background.card,
+          borderRadius: '8px',
+          border: `1px solid ${colors.border.subtle}`
+        }"
+      >
+        <h3 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, marginBottom: spacing[3], color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em' }">
+          Clusters
+        </h3>
+        <div :style="{ display: 'flex', flexDirection: 'column', gap: spacing[2] }">
+          <button
+            v-for="cluster in clusters"
+            :key="cluster.cluster_id"
+            @click="(e) => handleClusterClick(cluster.cluster_id, e)"
+            :style="{
+              padding: spacing[2],
+              backgroundColor: selectedClusterId === cluster.cluster_id ? colors.background.hover : 'transparent',
+              border: `1px solid ${getClusterColor(cluster.cluster_id)}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'all 150ms ease'
+            }"
+            class="cluster-tag"
+          >
+            <div :style="{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[1] }">
+              <span :style="{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: getClusterColor(cluster.cluster_id), flexShrink: 0 }"></span>
+              <span :style="{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colors.text.secondary }">
+                {{ cluster.size }} notes
+              </span>
+            </div>
+            <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.primary, margin: 0, lineHeight: '1.4' }">
+              {{ truncateTheme(cluster.theme, 45) }}
+            </p>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Graph Canvas -->
       <div class="graph-canvas" :style="{
+        flex: 1,
         position: 'relative',
         backgroundColor: colors.background.primary,
         borderRadius: '8px',
@@ -459,9 +565,9 @@ watch(graphData, async () => {
         ></svg>
       </div>
 
-      <!-- Floating Node Details Card -->
+      <!-- Floating Card: Node or Cluster Details -->
       <aside
-        v-if="selectedNode && cardVisible"
+        v-if="(selectedNode || selectedCluster) && cardVisible"
         class="details-panel floating-card"
         :style="{
           position: 'fixed',
@@ -481,9 +587,10 @@ watch(graphData, async () => {
           transition: 'left 200ms ease, top 200ms ease'
         }"
       >
+        <!-- Card Header -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing[3] }">
           <h3 :style="{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, margin: 0, flex: 1 }">
-            {{ getNodeTitle(selectedNode) }}
+            {{ selectedNode ? getNodeTitle(selectedNode) : (selectedCluster ? truncateTheme(selectedCluster.theme, 60) : '') }}
           </h3>
           <button
             @click="hideCard"
@@ -503,57 +610,136 @@ watch(graphData, async () => {
           </button>
         </div>
 
-        <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary, marginBottom: spacing[3] }">
-          📅 {{ new Date(selectedNode.created).toLocaleString() }}
-        </p>
-
-        <div :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', marginBottom: spacing[4] }">
-          <span
-            v-for="(value, key) in selectedNode.dimensions"
-            :key="key"
-            v-show="value"
-            :style="{
-              padding: `${spacing[1]} ${spacing[3]}`,
-              backgroundColor: getDimensionColor(key as any),
-              color: colors.text.onDark,
-              borderRadius: '9999px',
-              fontSize: typography.fontSize.sm,
-              fontWeight: typography.fontWeight.medium
-            }"
-          >
-            {{ key.replace(/^(is|has)/, '').replace(/([A-Z])/g, ' $1').trim() }}
-          </span>
-        </div>
-
-        <div :style="{
-          flex: 1,
-          padding: spacing[3],
-          backgroundColor: colors.background.hover,
-          borderRadius: '4px',
-          fontSize: typography.fontSize.sm,
-          lineHeight: '1.6',
-          overflowY: 'auto'
-        }">
-          <!-- Loading state -->
-          <p v-if="loadingContent" :style="{ color: colors.text.secondary, fontStyle: 'italic' }">
-            Loading content...
+        <!-- Node Content -->
+        <template v-if="selectedNode">
+          <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary, marginBottom: spacing[3] }">
+            📅 {{ new Date(selectedNode.created).toLocaleString() }}
           </p>
 
-          <!-- Content loaded (rendered markdown) -->
-          <div
-            v-else-if="renderedContent"
-            class="markdown-content"
-            v-html="renderedContent"
-            :style="{
-              color: colors.text.primary
-            }"
-          ></div>
+          <div :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', marginBottom: spacing[4] }">
+            <span
+              v-for="(value, key) in selectedNode.dimensions"
+              :key="key"
+              v-show="value"
+              :style="{
+                padding: `${spacing[1]} ${spacing[3]}`,
+                backgroundColor: getDimensionColor(key as any),
+                color: colors.text.onDark,
+                borderRadius: '9999px',
+                fontSize: typography.fontSize.sm,
+                fontWeight: typography.fontWeight.medium
+              }"
+            >
+              {{ key.replace(/^(is|has)/, '').replace(/([A-Z])/g, ' $1').trim() }}
+            </span>
+          </div>
 
-          <!-- No content -->
-          <p v-else :style="{ color: colors.text.muted, fontStyle: 'italic' }">
-            No content available
+          <div :style="{
+            flex: 1,
+            padding: spacing[3],
+            backgroundColor: colors.background.hover,
+            borderRadius: '4px',
+            fontSize: typography.fontSize.sm,
+            lineHeight: '1.6',
+            overflowY: 'auto'
+          }">
+            <p v-if="loadingContent" :style="{ color: colors.text.secondary, fontStyle: 'italic' }">
+              Loading content...
+            </p>
+            <div
+              v-else-if="renderedContent"
+              class="markdown-content"
+              v-html="renderedContent"
+              :style="{ color: colors.text.primary }"
+            ></div>
+            <p v-else :style="{ color: colors.text.muted, fontStyle: 'italic' }">
+              No content available
+            </p>
+          </div>
+        </template>
+
+        <!-- Cluster Content -->
+        <template v-else-if="selectedCluster">
+          <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary, marginBottom: spacing[3] }">
+            {{ selectedCluster.size }} notes | {{ selectedCluster.action_count }} action items
           </p>
-        </div>
+
+          <!-- People -->
+          <div v-if="selectedCluster.people.length" :style="{ marginBottom: spacing[3] }">
+            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
+              👥 People
+            </h4>
+            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }">
+              <span
+                v-for="person in selectedCluster.people"
+                :key="person.name"
+                :style="{
+                  padding: `${spacing[1]} ${spacing[2]}`,
+                  backgroundColor: colors.background.hover,
+                  borderRadius: '4px',
+                  fontSize: typography.fontSize.sm
+                }"
+              >
+                {{ person.name }}{{ person.role ? ` (${person.role})` : '' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Key Concepts -->
+          <div v-if="selectedCluster.key_concepts.length" :style="{ marginBottom: spacing[3] }">
+            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
+              💡 Key Concepts
+            </h4>
+            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }">
+              <span
+                v-for="concept in selectedCluster.key_concepts.slice(0, 5)"
+                :key="concept.concept"
+                :style="{
+                  padding: `${spacing[1]} ${spacing[2]}`,
+                  backgroundColor: colors.background.hover,
+                  borderRadius: '4px',
+                  fontSize: typography.fontSize.sm
+                }"
+              >
+                {{ concept.concept }} ({{ concept.frequency }})
+              </span>
+            </div>
+          </div>
+
+          <!-- Emotions -->
+          <div v-if="selectedCluster.emotions.length" :style="{ marginBottom: spacing[3] }">
+            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
+              😊 Emotions
+            </h4>
+            <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.primary }">
+              {{ selectedCluster.emotions.join(', ') }}
+            </p>
+          </div>
+
+          <!-- Dimensions -->
+          <div :style="{ marginBottom: spacing[3] }">
+            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
+              🏷️ Dimensions
+            </h4>
+            <div :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }">
+              <span
+                v-for="(value, key) in selectedCluster.dimensions"
+                :key="key"
+                v-show="value"
+                :style="{
+                  padding: `${spacing[1]} ${spacing[3]}`,
+                  backgroundColor: getDimensionColor(key as any),
+                  color: colors.text.onDark,
+                  borderRadius: '9999px',
+                  fontSize: typography.fontSize.sm,
+                  fontWeight: typography.fontWeight.medium
+                }"
+              >
+                {{ key.replace(/^(is|has)/, '').replace(/([A-Z])/g, ' $1').trim() }}
+              </span>
+            </div>
+          </div>
+        </template>
       </aside>
     </div>
   </div>
@@ -607,6 +793,24 @@ watch(graphData, async () => {
 
 .details-panel {
   box-shadow: 0 1px 3px 0 rgba(52, 52, 52, 0.1);
+}
+
+.cluster-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.cluster-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cluster-list::-webkit-scrollbar-thumb {
+  background: #d4cfc4;
+  border-radius: 3px;
+}
+
+.cluster-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Markdown content styling */

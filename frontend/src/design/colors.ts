@@ -73,6 +73,20 @@ export const colors = {
     warning: '#D89A4E',       // Warm amber
     info: '#6B8E7F',          // Muted teal
   },
+
+  // ========================================
+  // Cluster Colors (for graph visualization)
+  // ========================================
+  cluster: [
+    '#8B9F8D',  // Soft sage
+    '#B8A68B',  // Warm tan
+    '#9BA6C4',  // Muted blue
+    '#C9A88A',  // Peachy beige
+    '#A8BEAE',  // Mint green
+    '#C4A5A5',  // Dusty rose
+    '#9DACB3',  // Steel blue
+    '#B8B494',  // Olive
+  ],
 } as const
 
 // Type-safe color access
@@ -103,4 +117,16 @@ export function getDimensionLabel(dimension: keyof typeof colors.dimension): str
     isExploratory: 'Exploratory',
   }
   return labels[dimension]
+}
+
+/**
+ * Get cluster color by cluster ID
+ *
+ * @example
+ * getClusterColor(0) // '#8B9F8D' (soft sage)
+ * getClusterColor(10) // Wraps around for large cluster IDs
+ */
+export function getClusterColor(clusterId: number): string {
+  const index = clusterId % colors.cluster.length
+  return colors.cluster[index]
 }

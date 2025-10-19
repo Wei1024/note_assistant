@@ -70,6 +70,7 @@ export interface GraphNode {
   path: string
   created: string       // ISO timestamp
   dimensions: Dimensions
+  cluster_id?: number   // Cluster assignment from Louvain algorithm
   // D3 simulation properties (added at runtime)
   x?: number
   y?: number
@@ -110,6 +111,56 @@ export interface ConsolidationResult {
     store_links: number
     total: number
   }
+}
+
+/**
+ * Person entity extracted from notes
+ */
+export interface PersonEntity {
+  name: string
+  role?: string
+  relation?: string
+}
+
+/**
+ * Concept/entity with frequency count
+ */
+export interface ConceptEntity {
+  concept: string
+  frequency: number
+}
+
+/**
+ * Time reference (deadline, meeting, event)
+ */
+export interface TimeReference {
+  type?: string
+  datetime?: string
+  description?: string
+}
+
+/**
+ * Cluster summary with aggregated metadata
+ */
+export interface ClusterSummary {
+  cluster_id: number
+  size: number
+  theme: string
+  people: PersonEntity[]
+  key_concepts: ConceptEntity[]
+  emotions: string[]
+  time_references: TimeReference[]
+  dimensions: Dimensions
+  action_count: number
+}
+
+/**
+ * Clustered graph data from /graph/clusters
+ */
+export interface ClusteredGraphData {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  clusters: ClusterSummary[]
 }
 
 // ========================================
