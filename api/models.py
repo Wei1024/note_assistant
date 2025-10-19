@@ -77,3 +77,33 @@ class ConsolidateBatchResponse(BaseModel):
     notes_with_links: int
     started_at: str
     completed_at: str
+
+class PersonEntity(BaseModel):
+    name: str
+    role: Optional[str] = None
+    relation: Optional[str] = None
+
+class ConceptEntity(BaseModel):
+    concept: str
+    frequency: int
+
+class TimeReference(BaseModel):
+    type: Optional[str] = None
+    datetime: Optional[str] = None
+    description: Optional[str] = None
+
+class ClusterSummary(BaseModel):
+    cluster_id: int
+    size: int
+    theme: str
+    people: List[PersonEntity]
+    key_concepts: List[ConceptEntity]
+    emotions: List[str]
+    time_references: List[TimeReference]
+    dimensions: DimensionFlags
+    action_count: int
+
+class ClusteredGraphData(BaseModel):
+    nodes: List[dict]
+    edges: List[dict]
+    clusters: List[ClusterSummary]

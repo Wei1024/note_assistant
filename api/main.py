@@ -9,13 +9,15 @@ from .models import (
     ClassifyRequest, ClassifyResponse, DimensionFlags, SearchRequest, SearchHit, UpdateStatusRequest,
     DimensionSearchRequest, EntitySearchRequest, PersonSearchRequest,
     GraphSearchRequest, GraphData, SynthesisRequest, SynthesisResponse,
-    ConsolidateBatchRequest, ConsolidateBatchResponse
+    ConsolidateBatchRequest, ConsolidateBatchResponse, ClusteredGraphData
 )
 from .services.capture import classify_note_async
 from .services.search import search_notes_smart
 from .services.enrichment import enrich_note_metadata, store_enrichment_metadata
 from .services.consolidation import consolidate_daily_notes, consolidate_note, consolidate_notes
 from .services.synthesis import synthesize_search_results, synthesize_search_results_stream
+from .services.clustering import detect_clusters
+from .services.cluster_summary import get_cluster_summary
 from .services.query import (
     search_by_dimension, search_by_entity, search_by_person,
     search_graph, get_graph_visualization
@@ -568,6 +570,62 @@ async def get_full_corpus_graph(
         limit=limit
     )
     return GraphData(**graph)
+
+@app.get("/graph/clusters", response_model=ClusteredGraphData)
+async def get_clustered_graph(
+    min_links: int = 1,
+    limit: int = 100
+):
+    """Get full graph with cluster detection and summaries.
+
+    Uses Louvain algorithm to detect communities in the knowledge graph,
+    then generates semantic summaries for each cluster.
+
+    Query params:
+        - min_links: Only include notes with N+ connections (default: 1)
+        - limit: Max nodes to include in clustering (default: 100)
+
+    Returns:
+        ClusteredGraphData with nodes, edges, and cluster summaries
+
+    Examples:
+        /graph/clusters - Default clustering
+        /graph/clusters?min_links=2&limit=50 - Only well-connected notes
+    """
+    # Step 1: Detect clusters
+    clusters = detect_clusters(min_links=min_links, limit=limit)
+
+    # Step 2: Get graph data for these nodes
+    all_node_ids = []
+    for node_ids in clusters.values():
+        all_node_ids.extend(node_ids)
+
+    # Get full graph for these nodes
+    graph = get_full_graph(min_links=min_links, limit=limit)
+
+    # Add cluster_id to each node
+    node_to_cluster = {}
+    for cluster_id, node_ids in clusters.items():
+        for node_id in node_ids:
+            node_to_cluster[node_id] = cluster_id
+
+    for node in graph['nodes']:
+        node['cluster_id'] = node_to_cluster.get(node['id'], -1)
+
+    # Step 3: Generate summaries for each cluster
+    cluster_summaries = []
+    for cluster_id, node_ids in clusters.items():
+        summary = await get_cluster_summary(cluster_id, node_ids)
+        cluster_summaries.append(summary)
+
+    # Sort clusters by size (largest first)
+    cluster_summaries.sort(key=lambda c: c['size'], reverse=True)
+
+    return ClusteredGraphData(
+        nodes=graph['nodes'],
+        edges=graph['edges'],
+        clusters=cluster_summaries
+    )
 
 # EXPERIMENTAL ENDPOINTS (not in production use)
 # These are commented out - see future_agent.py for LangGraph implementations
