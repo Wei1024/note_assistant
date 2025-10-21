@@ -1,0 +1,81 @@
+{
+  "timestamp": "2025-10-20T23:16:19.952295",
+  "total_notes": 30,
+  "results": [
+    {
+      "note_id": "18",
+      "note_text": "Meeting notes from client call: They want the feature by end of month. Concerns about timeline. Follow up with PM.",
+      "expected": {
+        "who": [
+          "client",
+          "PM"
+        ],
+        "what": [
+          "meeting notes",
+          "feature",
+          "timeline",
+          "concerns"
+        ],
+        "when": [
+          "end of month"
+        ],
+        "where": [
+          "call"
+        ]
+      },
+      "actual": {
+        "who": [
+          "client",
+          "PM"
+        ],
+        "what": [
+          "feature"
+        ],
+        "when": [
+          "end of month"
+        ],
+        "where": [
+          "meeting"
+        ],
+        "tags": [
+          "meeting",
+          "timeline",
+          "planning"
+        ]
+      },
+      "scores": {
+        "who": 1.0,
+        "what": 0.4,
+        "when": 1.0,
+        "where": 0
+      }
+    }
+  ],
+  "aggregate_scores": {
+    "who": {
+      "average_f1": 0.9666666666666667,
+      "min_f1": 0.0,
+      "max_f1": 1.0,
+      "count": 30
+    },
+    "what": {
+      "average_f1": 0.4404219854219854,
+      "min_f1": 0.0,
+      "max_f1": 1.0,
+      "count": 30
+    },
+    "when": {
+      "average_f1": 0.9444444444444444,
+      "min_f1": 0,
+      "max_f1": 1.0,
+      "count": 30
+    },
+    "where": {
+      "average_f1": 0.7666666666666667,
+      "min_f1": 0.0,
+      "max_f1": 1.0,
+      "count": 30
+    }
+  },
+  "overall_f1": 0.7795499407999408
+}
