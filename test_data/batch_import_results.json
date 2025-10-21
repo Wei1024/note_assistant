@@ -1,0 +1,630 @@
+[
+  {
+    "note_id": "1",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "October 25 at 5 pm",
+          "parsed": "2025-10-25T17:00:00",
+          "type": "absolute"
+        },
+        {
+          "original": "5 pm",
+          "parsed": "2025-10-20T17:00:00",
+          "type": "absolute"
+        }
+      ],
+      "tags": []
+    }
+  },
+  {
+    "note_id": "2",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "Sarah"
+      ],
+      "what": [
+        "memory consolidation",
+        "hippocampus",
+        "note-taking systems"
+      ],
+      "where": [
+        "meeting"
+      ],
+      "when": [
+        {
+          "original": "today",
+          "parsed": "2025-10-20T00:00:00",
+          "type": "relative"
+        }
+      ],
+      "tags": [
+        "research",
+        "neuroscience",
+        "meeting"
+      ]
+    }
+  },
+  {
+    "note_id": "3",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [],
+      "tags": [
+        "excitement",
+        "project"
+      ]
+    }
+  },
+  {
+    "note_id": "4",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "JWT tokens",
+        "login API",
+        "authentication bug"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "security",
+        "bug fix"
+      ]
+    }
+  },
+  {
+    "note_id": "5",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "Redis",
+        "Memcached"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "caching",
+        "performance"
+      ]
+    }
+  },
+  {
+    "note_id": "6",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "Mom"
+      ],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "tomorrow at 2pm",
+          "parsed": "2025-10-21T14:00:00",
+          "type": "relative"
+        },
+        {
+          "original": "2pm",
+          "parsed": "2025-10-20T14:00:00",
+          "type": "absolute"
+        }
+      ],
+      "tags": [
+        "planning"
+      ]
+    }
+  },
+  {
+    "note_id": "7",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "asyncio.gather",
+        "asyncio.create_task",
+        "async",
+        "await",
+        "concurrent operations",
+        "fire-and-forget"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "programming",
+        "concurrency",
+        "python",
+        "async"
+      ]
+    }
+  },
+  {
+    "note_id": "8",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "Alex",
+        "Jordan"
+      ],
+      "what": [
+        "OAuth2"
+      ],
+      "where": [
+        "team standup"
+      ],
+      "when": [
+        {
+          "original": "Friday",
+          "parsed": "2025-10-17T00:00:00",
+          "type": "absolute"
+        }
+      ],
+      "tags": [
+        "meeting",
+        "security"
+      ]
+    }
+  },
+  {
+    "note_id": "9",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [],
+      "tags": [
+        "procrastination",
+        "self-reflection"
+      ]
+    }
+  },
+  {
+    "note_id": "10",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "Bulk export feature",
+        "API rate limiting",
+        "Webhook support"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "product ideas",
+        "feature planning",
+        "api"
+      ]
+    }
+  },
+  {
+    "note_id": "11",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [],
+      "tags": [
+        "sports",
+        "game"
+      ]
+    }
+  },
+  {
+    "note_id": "12",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "memory consolidation",
+        "slow-wave sleep",
+        "hippocampus",
+        "neural pathways"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "neuroscience",
+        "sleep",
+        "brain function"
+      ]
+    }
+  },
+  {
+    "note_id": "13",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [],
+      "tags": [
+        "planning",
+        "overwhelm"
+      ]
+    }
+  },
+  {
+    "note_id": "14",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "Sarah"
+      ],
+      "what": [
+        "career growth",
+        "work-life balance",
+        "boundaries"
+      ],
+      "where": [
+        "coffee chat"
+      ],
+      "when": [],
+      "tags": [
+        "career",
+        "work-life",
+        "advice"
+      ]
+    }
+  },
+  {
+    "note_id": "15",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "milk",
+        "eggs",
+        "bread",
+        "coffee"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "shopping",
+        "daily",
+        "groceries"
+      ]
+    }
+  },
+  {
+    "note_id": "16",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "today",
+          "parsed": "2025-10-20T00:00:00",
+          "type": "relative"
+        }
+      ],
+      "tags": [
+        "gratitude",
+        "sunset"
+      ]
+    }
+  },
+  {
+    "note_id": "17",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "indexing",
+        "notes",
+        "retrieval",
+        "folders",
+        "benchmark"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "performance",
+        "technology",
+        "research",
+        "benchmarking"
+      ]
+    }
+  },
+  {
+    "note_id": "18",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "client",
+        "PM"
+      ],
+      "what": [
+        "feature"
+      ],
+      "where": [
+        "meeting"
+      ],
+      "when": [
+        {
+          "original": "end of month",
+          "parsed": null,
+          "type": "absolute"
+        }
+      ],
+      "tags": [
+        "meeting",
+        "timeline",
+        "planning"
+      ]
+    }
+  },
+  {
+    "note_id": "19",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "PostgreSQL",
+        "EXPLAIN ANALYZE",
+        "query planning",
+        "execution times"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "database",
+        "performance",
+        "query",
+        "analysis"
+      ]
+    }
+  },
+  {
+    "note_id": "20",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "today",
+          "parsed": "2025-10-20T00:00:00",
+          "type": "relative"
+        }
+      ],
+      "tags": [
+        "productivity",
+        "well-being"
+      ]
+    }
+  },
+  {
+    "note_id": "21",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "sentence-transformers",
+        "ChromaDB",
+        "cosine similarity",
+        "semantic search",
+        "vector embeddings"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "ai",
+        "search",
+        "technology",
+        "data"
+      ]
+    }
+  },
+  {
+    "note_id": "22",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "React",
+        "SEO",
+        "single-page app",
+        "server-rendered"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "technology",
+        "architecture",
+        "decision"
+      ]
+    }
+  },
+  {
+    "note_id": "23",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "bug",
+        "config file"
+      ],
+      "where": [],
+      "when": [
+        {
+          "original": "3 hours",
+          "parsed": "2025-10-19T21:00:00",
+          "type": "duration"
+        }
+      ],
+      "tags": [
+        "debugging",
+        "issue",
+        "technical"
+      ]
+    }
+  },
+  {
+    "note_id": "24",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "Weekly",
+          "parsed": null,
+          "type": "recurring"
+        }
+      ],
+      "tags": [
+        "goal-tracking",
+        "productivity",
+        "time-estimation"
+      ]
+    }
+  },
+  {
+    "note_id": "25",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "quantum computing",
+        "note search"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "research",
+        "technology",
+        "ai"
+      ]
+    }
+  },
+  {
+    "note_id": "26",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "tests",
+        "changelog",
+        "main",
+        "release",
+        "logs",
+        "merge",
+        "tag"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "deployment",
+        "workflow",
+        "operations",
+        "monitoring"
+      ]
+    }
+  },
+  {
+    "note_id": "27",
+    "status": "success",
+    "extracted": {
+      "who": [
+        "Tom"
+      ],
+      "what": [
+        "AI startups"
+      ],
+      "where": [
+        "lunch"
+      ],
+      "when": [],
+      "tags": [
+        "meeting",
+        "ai"
+      ]
+    }
+  },
+  {
+    "note_id": "28",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [
+        "SQLite",
+        "FTS5",
+        "python",
+        "flask",
+        "django"
+      ],
+      "where": [],
+      "when": [],
+      "tags": [
+        "database",
+        "technology",
+        "query",
+        "development"
+      ]
+    }
+  },
+  {
+    "note_id": "29",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [],
+      "tags": [
+        "refactoring",
+        "feature-development",
+        "decision"
+      ]
+    }
+  },
+  {
+    "note_id": "30",
+    "status": "success",
+    "extracted": {
+      "who": [],
+      "what": [],
+      "where": [],
+      "when": [
+        {
+          "original": "next Tuesday",
+          "parsed": null,
+          "type": "relative"
+        },
+        {
+          "original": "10am",
+          "parsed": "2025-10-20T10:00:00",
+          "type": "absolute"
+        },
+        {
+          "original": "Tuesday",
+          "parsed": "2025-10-14T00:00:00",
+          "type": "absolute"
+        }
+      ],
+      "tags": [
+        "health",
+        "appointment",
+        "planning"
+      ]
+    }
+  }
+]

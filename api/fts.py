@@ -1,23 +1,23 @@
+"""
+Full-Text Search (FTS5) for GraphRAG Notes
+Simplified - no dimension-based metadata
+"""
+
 # Schema is now managed centrally in api/db/schema.py
-# Import ensure_db from there to avoid duplication
 from .db.schema import ensure_db as _ensure_db_schema
 
-def ensure_db():
-    """Initialize complete database schema (multi-dimensional metadata)
 
-    NOTE: This now delegates to api/db/schema.py to avoid duplication.
-    The schema is maintained in a single source of truth.
+def ensure_db():
+    """Initialize database schema
+
+    Delegates to api/db/schema.py for centralized schema management
     """
-    # Use centralized schema initialization
     _ensure_db_schema()
 
+
 def index_note(note_id: str, title: str, body: str, tags: list,
-               path: str, created: str, status: str = None,
-               needs_review: bool = False, review_reason: str = None,
-               has_action_items: bool = False, is_social: bool = False,
-               is_emotional: bool = False, is_knowledge: bool = False,
-               is_exploratory: bool = False, db_connection=None):
-    """Add note to FTS5 index and metadata tables
+               path: str, created: str, db_connection=None, **kwargs):
+    """Add note to FTS5 index and metadata tables (GraphRAG version - simplified)
 
     Args:
         note_id: Note ID
@@ -26,15 +26,8 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         tags: List of tags
         path: File path
         created: Creation timestamp
-        status: Task status (todo/in_progress/done)
-        needs_review: Whether note needs review
-        review_reason: Reason for review flag
-        has_action_items: Boolean dimension - contains actionable todos
-        is_social: Boolean dimension - involves conversations
-        is_emotional: Boolean dimension - expresses feelings
-        is_knowledge: Boolean dimension - contains learnings
-        is_exploratory: Boolean dimension - brainstorming/ideas
         db_connection: Optional shared database connection
+        **kwargs: Accepts but ignores deprecated dimension parameters for compatibility
     """
     # Use provided connection or create new one
     should_close = db_connection is None
@@ -45,7 +38,6 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         con = db_connection
 
     cur = con.cursor()
-
     tags_csv = ",".join(tags)
 
     # FTS5 index
@@ -54,16 +46,12 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         (note_id, title, body, tags_csv)
     )
 
-    # Metadata with review fields and boolean dimensions (no folder!)
+    # Metadata table (minimal - no dimensions)
     cur.execute(
         """INSERT OR REPLACE INTO notes_meta
-           (id, path, created, updated, status,
-            has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
-            needs_review, review_reason)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (note_id, path, created, created, status,
-         has_action_items, is_social, is_emotional, is_knowledge, is_exploratory,
-         needs_review, review_reason)
+           (id, path, created, updated)
+           VALUES (?, ?, ?, ?)""",
+        (note_id, path, created, created)
     )
 
     # Only commit and close if we created the connection
@@ -71,14 +59,17 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         con.commit()
         con.close()
 
-def search_notes(query: str, limit: int = 20, status: str = None):
-    """Search notes using FTS5
+
+def search_notes(query: str, limit: int = 20):
+    """Search notes using FTS5 (GraphRAG version - simplified)
 
     Supports:
     - Boolean queries with OR: "sport OR baseball OR game"
     - Simple terms: "baseball"
     - Phrases in quotes: '"exact phrase"'
-    - Status filtering: status="todo" to filter by task status
+
+    Returns:
+        List of dicts with path, snippet, score, created
     """
     from .config import get_db_connection
     con = get_db_connection()
@@ -93,47 +84,26 @@ def search_notes(query: str, limit: int = 20, status: str = None):
         escaped_query = query.replace('"', '""')
         fts_query = f'"{escaped_query}"'
 
-    # Build SQL query with optional status filter (include metadata)
     sql = """
         SELECT n.path,
                snippet(notes_fts, 1, '<b>', '</b>', '…', 8) AS snippet,
                bm25(notes_fts) AS score,
-               n.created,
-               n.has_action_items,
-               n.is_social,
-               n.is_emotional,
-               n.is_knowledge,
-               n.is_exploratory
+               n.created
         FROM notes_fts
         JOIN notes_meta n ON n.id = notes_fts.id
         WHERE notes_fts MATCH ?
+        ORDER BY score
+        LIMIT ?
     """
-    params = [fts_query]
 
-    if status:
-        sql += " AND n.status = ?"
-        params.append(status)
-
-    sql += " ORDER BY score LIMIT ?"
-    params.append(limit)
-
-    cur.execute(sql, params)
+    cur.execute(sql, [fts_query, limit])
 
     results = [
         {
             "path": row[0],
             "snippet": row[1],
             "score": row[2],
-            "metadata": {
-                "created": row[3],
-                "dimensions": {
-                    "has_action_items": bool(row[4]),
-                    "is_social": bool(row[5]),
-                    "is_emotional": bool(row[6]),
-                    "is_knowledge": bool(row[7]),
-                    "is_exploratory": bool(row[8])
-                }
-            }
+            "metadata": {"created": row[3]}
         }
         for row in cur.fetchall()
     ]
