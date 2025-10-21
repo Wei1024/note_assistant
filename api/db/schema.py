@@ -200,5 +200,81 @@ def ensure_db():
         ON llm_operations(success)
     """)
 
+    # ========================================================================
+    # Graph Structure: Nodes & Edges (GraphRAG - Episodic/Semantic/Prospective)
+    # ========================================================================
+
+    # Nodes table: Represents individual notes in the graph
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS graph_nodes (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            created TEXT NOT NULL,
+
+            -- Episodic metadata (WHO/WHAT/WHERE/WHEN)
+            entities_who TEXT,      -- JSON array of people/orgs
+            entities_what TEXT,     -- JSON array of concepts/topics
+            entities_where TEXT,    -- JSON array of locations
+            time_references TEXT,   -- JSON array of time objects
+            tags TEXT,              -- JSON array of thematic tags
+
+            -- Semantic metadata (Phase 2)
+            embedding BLOB,         -- Vector embedding for similarity
+            cluster_id INTEGER,     -- Cluster assignment
+
+            -- File system mapping
+            file_path TEXT,
+
+            FOREIGN KEY(id) REFERENCES notes_meta(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_graph_nodes_created
+        ON graph_nodes(created)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_graph_nodes_cluster
+        ON graph_nodes(cluster_id)
+    """)
+
+    # Edges table: Represents relationships between notes
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS graph_edges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            src_node_id TEXT NOT NULL,
+            dst_node_id TEXT NOT NULL,
+
+            -- Edge type determines the relationship
+            relation TEXT NOT NULL,  -- semantic, entity_link, tag_link, time_next, reminder
+
+            -- Edge metadata
+            weight REAL DEFAULT 1.0,      -- Strength of relationship
+            metadata TEXT,                 -- JSON for additional info (e.g., shared entities)
+            created TEXT NOT NULL,
+
+            FOREIGN KEY(src_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE,
+            FOREIGN KEY(dst_node_id) REFERENCES graph_nodes(id) ON DELETE CASCADE,
+
+            UNIQUE(src_node_id, dst_node_id, relation)
+        )
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_graph_edges_src
+        ON graph_edges(src_node_id)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_graph_edges_dst
+        ON graph_edges(dst_node_id)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_graph_edges_relation
+        ON graph_edges(relation)
+    """)
+
     con.commit()
     con.close()
