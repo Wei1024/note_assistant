@@ -25,7 +25,7 @@ def pick_filename(title: str, created_iso: str) -> str:
     return f"{ymd}-{slug}.md"
 
 def write_markdown(title: str, tags: list, body: str, related_ids=None, status=None,
-                   needs_review=False, reasoning=None, enrichment=None):
+                   needs_review=False, reasoning=None, enrichment=None, db_connection=None):
     """Write note to disk and index in SQLite with optional multi-dimensional metadata.
 
     Args:
@@ -141,7 +141,8 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
         is_social=is_social,
         is_emotional=is_emotional,
         is_knowledge=is_knowledge,
-        is_exploratory=is_exploratory
+        is_exploratory=is_exploratory,
+        db_connection=db_connection  # Pass shared connection
     )
 
     return nid, str(path), front["title"]

@@ -51,7 +51,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "tauri://localhost",
-        "http://localhost:5174",  # Vue frontend dev server
+        "http://localhost:5173",  # Vue frontend dev server
+        "http://localhost:5174",  # Alternative port
+        "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
@@ -66,11 +68,17 @@ async def health():
 @app.post("/classify_and_save", response_model=ClassifyResponse)
 async def classify_and_save(req: ClassifyRequest):
     """Extract metadata and save note (dimensions-based classification)"""
+    # Create single database connection for entire transaction
+    from .config import get_db_connection
+    con = get_db_connection()
+
     try:
         # Step 1: Extract title/tags
+        # NOTE: classify_note_async uses track_llm_call internally which will need connection
         result = await classify_note_async(req.text)
 
         # Step 2: Enrich with dimensions + entities
+        # NOTE: enrich_note_metadata uses track_llm_call internally which will need connection
         enrichment = None
         try:
             enrichment = await enrich_note_metadata(req.text, result)
@@ -78,32 +86,35 @@ async def classify_and_save(req: ClassifyRequest):
             print(f"Enrichment failed: {enrich_error}")
             enrichment = {}
 
-        # Step 3: Save to flat structure
+        # Step 3: Save to flat structure (using shared connection)
         note_id, filepath, title = write_markdown(
             title=result["title"],
             tags=result["tags"],
             body=req.text,
             status=result.get("status"),
-            enrichment=enrichment
+            enrichment=enrichment,
+            db_connection=con  # Pass shared connection
         )
 
-        # Step 4: Store enrichment in database
+        # Step 4: Store enrichment in database (using shared connection)
         if enrichment:
             try:
-                con = sqlite3.connect(DB_PATH)
                 store_enrichment_metadata(note_id, enrichment, con)
-                con.close()
             except Exception as db_error:
                 print(f"Failed to store enrichment: {db_error}")
 
-        # Extract dimensions from enrichment
+        # Extract dimensions from classification result (not enrichment!)
+        classification_dims = result.get("dimensions", {})
         dimensions = DimensionFlags(
-            has_action_items=enrichment.get("has_action_items", False) if enrichment else False,
-            is_social=enrichment.get("is_social", False) if enrichment else False,
-            is_emotional=enrichment.get("is_emotional", False) if enrichment else False,
-            is_knowledge=enrichment.get("is_knowledge", False) if enrichment else False,
-            is_exploratory=enrichment.get("is_exploratory", False) if enrichment else False
+            has_action_items=classification_dims.get("has_action_items", False),
+            is_social=classification_dims.get("is_social", False),
+            is_emotional=classification_dims.get("is_emotional", False),
+            is_knowledge=classification_dims.get("is_knowledge", False),
+            is_exploratory=classification_dims.get("is_exploratory", False)
         )
+
+        # Commit all changes in one transaction
+        con.commit()
 
         return ClassifyResponse(
             title=title,
@@ -113,18 +124,29 @@ async def classify_and_save(req: ClassifyRequest):
         )
 
     except Exception as e:
+        # Rollback on error
+        con.rollback()
+
         first_line = req.text.split("\n")[0][:60]
         note_id, filepath, title = write_markdown(
             title=first_line,
             tags=[],
-            body=req.text
+            body=req.text,
+            db_connection=con  # Use same connection
         )
+
+        # Commit fallback save
+        con.commit()
+
         return ClassifyResponse(
             title=title,
             dimensions=DimensionFlags(),  # All False on error
             tags=[],
             path=filepath
         )
+    finally:
+        # Always close connection
+        con.close()
 
 async def enrich_note_background(note_id: str, note_path: str, note_text: str):
     """Background task to classify and enrich a note after it's been saved.

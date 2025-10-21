@@ -16,7 +16,7 @@ def index_note(note_id: str, title: str, body: str, tags: list,
                needs_review: bool = False, review_reason: str = None,
                has_action_items: bool = False, is_social: bool = False,
                is_emotional: bool = False, is_knowledge: bool = False,
-               is_exploratory: bool = False):
+               is_exploratory: bool = False, db_connection=None):
     """Add note to FTS5 index and metadata tables
 
     Args:
@@ -34,9 +34,16 @@ def index_note(note_id: str, title: str, body: str, tags: list,
         is_emotional: Boolean dimension - expresses feelings
         is_knowledge: Boolean dimension - contains learnings
         is_exploratory: Boolean dimension - brainstorming/ideas
+        db_connection: Optional shared database connection
     """
-    from .config import get_db_connection
-    con = get_db_connection()
+    # Use provided connection or create new one
+    should_close = db_connection is None
+    if db_connection is None:
+        from .config import get_db_connection
+        con = get_db_connection()
+    else:
+        con = db_connection
+
     cur = con.cursor()
 
     tags_csv = ",".join(tags)
@@ -59,8 +66,10 @@ def index_note(note_id: str, title: str, body: str, tags: list,
          needs_review, review_reason)
     )
 
-    con.commit()
-    con.close()
+    # Only commit and close if we created the connection
+    if should_close:
+        con.commit()
+        con.close()
 
 def search_notes(query: str, limit: int = 20, status: str = None):
     """Search notes using FTS5
