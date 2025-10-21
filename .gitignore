@@ -21,6 +21,10 @@ build/
 *.log
 agentops.log
 
+# Analysis outputs (generated files)
+analysis_output/
+test_data/*.log
+
 # OS
 .DS_Store
 Thumbs.db
