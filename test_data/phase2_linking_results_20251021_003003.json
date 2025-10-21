@@ -1,0 +1,168 @@
+{
+  "generated_at": "2025-10-21T00:30:03.663100",
+  "total_edges": 13,
+  "edges_by_relation": {
+    "entity_link": {
+      "count": 3,
+      "edges": [
+        {
+          "src": "2025-10-21T00:26:59-07:00_bcec",
+          "dst": "2025-10-21T00:27:31-07:00_d675",
+          "weight": 2.0,
+          "metadata": {
+            "entity_type": "what",
+            "shared_what": [
+              "memory consolidation",
+              "hippocampus"
+            ],
+            "count": 2
+          }
+        },
+        {
+          "src": "2025-10-21T00:26:59-07:00_bcec",
+          "dst": "2025-10-21T00:27:37-07:00_8226",
+          "weight": 1.0,
+          "metadata": {
+            "entity_type": "who",
+            "shared_who": [
+              "Sarah"
+            ],
+            "count": 1
+          }
+        },
+        {
+          "src": "2025-10-21T00:26:59-07:00_bcec",
+          "dst": "2025-10-21T00:27:52-07:00_150a",
+          "weight": 1.0,
+          "metadata": {
+            "entity_type": "where",
+            "shared_where": [
+              "meeting"
+            ],
+            "count": 1
+          }
+        }
+      ]
+    },
+    "tag_link": {
+      "count": 10,
+      "edges": [
+        {
+          "src": "2025-10-21T00:26:55-07:00_02f7",
+          "dst": "2025-10-21T00:28:33-07:00_0e83",
+          "weight": 1.0,
+          "metadata": {
+            "shared_tags": [
+              "health",
+              "appointment",
+              "planning"
+            ],
+            "jaccard": 1.0
+          }
+        },
+        {
+          "src": "2025-10-21T00:28:02-07:00_2085",
+          "dst": "2025-10-21T00:28:16-07:00_a80e",
+          "weight": 0.4,
+          "metadata": {
+            "shared_tags": [
+              "ai",
+              "technology"
+            ],
+            "jaccard": 0.4
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:48-07:00_e268",
+          "dst": "2025-10-21T00:28:16-07:00_a80e",
+          "weight": 0.4,
+          "metadata": {
+            "shared_tags": [
+              "technology",
+              "research"
+            ],
+            "jaccard": 0.4
+          }
+        },
+        {
+          "src": "2025-10-21T00:26:55-07:00_02f7",
+          "dst": "2025-10-21T00:27:11-07:00_2929",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "planning"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:05-07:00_7799",
+          "dst": "2025-10-21T00:27:18-07:00_46eb",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "security"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:11-07:00_2929",
+          "dst": "2025-10-21T00:27:25-07:00_a9f5",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "planning"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:11-07:00_2929",
+          "dst": "2025-10-21T00:27:52-07:00_150a",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "planning"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:18-07:00_46eb",
+          "dst": "2025-10-21T00:28:23-07:00_fbd0",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "meeting"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:56-07:00_b923",
+          "dst": "2025-10-21T00:28:27-07:00_3c35",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "query",
+              "database"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        },
+        {
+          "src": "2025-10-21T00:27:11-07:00_2929",
+          "dst": "2025-10-21T00:28:33-07:00_0e83",
+          "weight": 0.3333333333333333,
+          "metadata": {
+            "shared_tags": [
+              "planning"
+            ],
+            "jaccard": 0.3333333333333333
+          }
+        }
+      ]
+    }
+  }
+}

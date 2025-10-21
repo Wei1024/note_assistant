@@ -23,7 +23,7 @@
 Implementing a local GraphRAG system with four layers:
 
 1. **Episodic Layer** - Extract WHO/WHAT/WHEN/WHERE entities from notes ✅ **COMPLETE**
-2. **Semantic Layer** - Create embeddings and auto-link via similarity ⏸️ NOT STARTED
+2. **Semantic Layer** - Create embeddings and auto-link via similarity ✅ **COMPLETE**
 3. **Prospective Layer** - Detect future times/todos, create time-based edges ⏸️ NOT STARTED
 4. **Retrieval Layer** - Hybrid search (FTS5 + embeddings) with graph expansion ⏸️ NOT STARTED
 
@@ -150,38 +150,179 @@ Response: {
 
 ---
 
-## Phase 2: Semantic Layer - Embeddings & Auto-Linking
+## Phase 2: Semantic Layer - Embeddings & Auto-Linking ✅ **COMPLETE**
 
-**Status**: ⏸️ **NOT STARTED** (Ready to begin)
+**Status**: ✅ **FULLY COMPLETE** (2025-10-21)
 
-### Planned Components
+**Implementation**: Embedding generation, vector similarity search, entity linking, tag linking fully operational.
 
-1. **Embedding Generation**
-   - Model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim)
-   - Generate on note save, store in `graph_nodes.embedding` as BLOB
-   - Background task to avoid blocking API response
+### Implemented Components
 
-2. **Semantic Edge Creation**
-   - k-NN search for similar notes (cosine similarity)
-   - Threshold: 0.7+ similarity → create `semantic` edge
-   - Store similarity as edge weight
+1. **Embedding Generation** ✅
+   - Model: `sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~200MB)
+   - Generates normalized embeddings on note save
+   - Stored in `graph_nodes.embedding` as BLOB
+   - FastAPI BackgroundTasks (non-blocking, runs after response sent)
 
-3. **Entity-Based Linking**
-   - Notes sharing WHO entities → `entity_link` edges
-   - Notes sharing WHAT entities → `entity_link` edges
+2. **Semantic Edge Creation** ✅
+   - NumPy brute-force cosine similarity search
+   - Threshold: **0.5+** similarity → create `semantic` edge (adjusted from initial 0.7)
+   - Edge weight = cosine similarity score
+   - Migration path to FAISS ready for 5K+ notes
+
+3. **Entity-Based Linking** ✅
+   - Notes sharing **WHO** entities → `entity_link` edges
+   - Notes sharing **WHAT** entities → `entity_link` edges
+   - Notes sharing **WHERE** entities → `entity_link` edges (added during implementation)
+   - Edge weight = number of shared entities (1 = weak, 5 = strong)
+   - Case-insensitive normalization ("Sarah" = "sarah")
+
+4. **Tag-Based Linking** ✅
    - Notes sharing tags → `tag_link` edges
+   - Jaccard similarity threshold: **>= 0.3**
+   - Edge weight = Jaccard coefficient (0.3 to 1.0)
+   - Normalization handles "ai-research" = "AI Research" = "ai_research"
 
-4. **Clustering**
-   - Load graph into NetworkX
-   - Run Louvain community detection
-   - Store `cluster_id` in graph_nodes
-   - Generate cluster summaries via LLM
+5. **Clustering** ⏸️ **DEFERRED TO PHASE 2.5**
+   - NetworkX dependency added
+   - Will implement: Louvain community detection
+   - Will store: `cluster_id` in graph_nodes
+   - Will generate: LLM cluster summaries
 
-### Prerequisites
-- ✅ Graph schema ready
-- ✅ Phase 1 complete (notes with episodic metadata)
-- ⏳ Choose embedding model
-- ⏳ Implement background task system
+### Core Services
+
+**`api/services/semantic.py` (177 lines)**:
+- `get_embedding_model()` - Singleton model loader
+- `generate_embedding(text)` - 384-dim vector generation
+- `store_embedding(note_id, embedding, con)` - BLOB storage
+- `find_similar_notes(note_id, threshold, limit)` - NumPy cosine similarity
+- `create_semantic_edges(note_id, con)` - Auto-link similar notes
+
+**`api/services/linking.py` (231 lines)**:
+- `normalize_entity(entity)` - Case-insensitive normalization
+- `normalize_tag(tag)` - Handle delimiters ("ai-research" = "AI Research")
+- `find_shared_entities(entities_a, entities_b)` - Overlap detection
+- `calculate_tag_similarity(tags_a, tags_b)` - Jaccard coefficient
+- `create_entity_links(note_id, con)` - Link on WHO/WHAT/WHERE
+- `create_tag_links(note_id, con)` - Link on shared tags
+
+**`api/main.py` (modified)**:
+- Added `BackgroundTasks` to `/capture_note` endpoint
+- `process_semantic_and_linking(note_id)` - Background processor
+- Non-blocking: API returns immediately (~500ms), edges created async (~2-3s)
+
+### Testing & Validation
+
+✅ **Test Dataset**: 30 diverse notes (health, tech, personal, work, research)
+✅ **Embedding Generation**: 100% success rate (all 30 notes have embeddings)
+✅ **Edge Creation**: 15 total edges created
+
+**Edge Breakdown (30 notes)**:
+| Edge Type | Count | Weight Range | Examples |
+|-----------|-------|--------------|----------|
+| `semantic` | 2 | 0.594-0.602 | Dental ↔ Doctor appointment, Memory research notes |
+| `entity_link` | 3 | 1.0-2.0 | Shared ["memory consolidation", "hippocampus"], Shared ["Sarah"] |
+| `tag_link` | 10 | 0.333-1.0 | Shared ["health", "appointment", "planning"] |
+
+**Validation Results**:
+- ✅ All links manually verified against note content
+- ✅ Normalization working correctly (case-insensitive, delimiter-agnostic)
+- ✅ No false positives (dissimilar notes correctly NOT linked)
+- ✅ Weight system accurate (reflects link strength)
+- ✅ Metadata rich (shared entities/tags stored for debugging)
+
+**Performance** (30 notes):
+- Embedding generation: ~1-2s per note
+- Similarity search: <100ms (NumPy brute-force)
+- Entity linking: ~50-100ms
+- Total background task: ~2-3s per note
+
+### Test Scripts Created
+
+1. **`test_phase2_semantic.py`** (95 lines)
+   - Tests embedding generation
+   - Verifies similarity computation
+   - Checks embeddings in database
+
+2. **`test_phase2_linking.py`** (313 lines)
+   - Imports 30 test notes via API
+   - Waits for background processing
+   - Analyzes edge creation
+   - Generates reports: CSV, TXT, JSON
+
+3. **`reprocess_semantic_edges.py`** (utility)
+   - Reprocesses semantic edges with new threshold
+   - Used when adjusting similarity threshold
+
+**Test Reports Generated**:
+- `test_data/phase2_edges_<timestamp>.csv`
+- `test_data/phase2_linking_report_<timestamp>.txt`
+- `test_data/phase2_linking_results_<timestamp>.json`
+
+### Architecture Decisions Made
+
+**1. Vector Search: NumPy (Now) → FAISS (Future)**
+- **Decision**: Start with NumPy brute-force
+- **Rationale**: Fast enough for <1K notes, simple implementation
+- **Migration Path**: Swap to FAISS when scaling to 5K+ notes (~2-3 hour effort)
+
+**2. Semantic Similarity Threshold: 0.5 (adjusted from 0.7)**
+- **Initial**: 0.7 threshold (too strict for real-world notes)
+- **Observed**: Highest similarity ~0.6 for related notes
+- **Adjusted**: 0.5 threshold captures meaningful relationships
+- **Validation**: 2 semantic edges created, both manually validated as correct
+
+**3. Entity Linking on WHO/WHAT/WHERE (not WHEN)**
+- **Decision**: Link on WHO/WHAT/WHERE, defer WHEN to Phase 3
+- **Rationale**: WHEN creates temporal/directional relationships (different semantics)
+- **Phase 3**: Will handle time-based edges (`time_next`) separately
+
+**4. Edge Storage: Unidirectional**
+- **Decision**: Store once (A→B where A.id < B.id lexicographically)
+- **Rationale**: Avoid duplication, easier consistency
+- **Query**: Bidirectional (`WHERE src_node_id = X OR dst_node_id = X`)
+
+**5. "A Link is a Link" Philosophy**
+- **Decision**: Create edges for ANY shared entity/tag (even just 1)
+- **Weight System**: Reflects link strength (1 shared = weak, 5 shared = strong)
+- **Rationale**: Mirrors human memory (associative connections of varying strength)
+
+### Key Insights
+
+**Why semantic edges are rare?**
+- Real notes have **moderate similarity** (0.3-0.6 range), not high (0.7+)
+- Even topically related notes differ in phrasing, focus, detail
+- This is **normal** for sentence-transformers
+- Threshold 0.5 is appropriate (catches related notes, avoids false positives)
+
+**Why tag links dominate?**
+- LLM generates **broad thematic tags** that naturally overlap
+- Tags like "planning", "meeting", "technology" appear across multiple notes
+- Creates more connections than specific entity matching
+
+**Why few entity links in test?**
+- Test notes are **intentionally diverse** (different people/topics/locations)
+- Real usage with recurring people/topics will increase entity links
+- 3 entity links for 30 diverse notes is expected
+
+### Files Created/Modified
+
+**New Files**:
+- ✅ `api/services/semantic.py` (177 lines)
+- ✅ `api/services/linking.py` (231 lines)
+- ✅ `test_phase2_semantic.py` (95 lines)
+- ✅ `test_phase2_linking.py` (313 lines)
+- ✅ `reprocess_semantic_edges.py` (utility script)
+- ✅ `PHASE2_IMPLEMENTATION.md` (documentation)
+
+**Modified Files**:
+- ✅ `requirements.txt` - Added sentence-transformers, scikit-learn, networkx
+- ✅ `api/main.py` - Added BackgroundTasks, process_semantic_and_linking()
+
+**Dependencies Added**:
+- `sentence-transformers` (~200MB with model)
+- `scikit-learn` (cosine similarity)
+- `networkx` (for future clustering)
 
 ---
 
@@ -267,45 +408,46 @@ Response: {
 
 ## Next Steps
 
-### Immediate (Start Phase 2)
-1. **Choose embedding model**
-   - Option A: `all-MiniLM-L6-v2` (384-dim, fast, good quality)
-   - Option B: `bge-small-en-v1.5` (384-dim, SOTA quality)
+### Immediate Options
 
-2. **Implement background embedding generation**
-   - FastAPI BackgroundTasks on `/capture_note`
-   - Generate embedding after note saved
-   - Update `graph_nodes.embedding`
-
-3. **Build semantic linking**
-   - k-NN search via NumPy/Faiss
-   - Create `semantic` edges for similar notes
-   - Threshold: 0.7+ cosine similarity
-
-4. **Implement entity-based linking**
-   - Query notes sharing WHO entities
-   - Query notes sharing WHAT entities
-   - Create `entity_link` edges
-
-5. **Test clustering**
-   - Load graph into NetworkX
-   - Run Louvain algorithm
+**Option A: Phase 2.5 - Clustering**
+1. **Implement NetworkX clustering**
+   - Load graph from database
+   - Run Louvain community detection
    - Store `cluster_id` in graph_nodes
+   - Generate LLM cluster summaries
 
-### After Phase 2
-1. Start Phase 3 (Prospective Layer)
-2. Build `/upcoming_actions` endpoint
-3. Create time-based edges
+2. **Add clustering endpoints**
+   - `POST /graph/cluster_all` - Trigger clustering
+   - `GET /graph/cluster/{cluster_id}` - Get cluster notes
+   - `GET /graph/cluster_summary/{cluster_id}` - Get LLM summary
 
-### After Phase 3
-1. Start Phase 4 (Retrieval Layer)
-2. Implement hybrid search (FTS5 + vector)
-3. Build graph expansion logic
-4. Test end-to-end retrieval quality
+**Option B: Phase 3 - Prospective Layer**
+1. **Implement time-based edge detection**
+   - Parse future dates from `graph_nodes.time_references`
+   - Create `time_next` edges for upcoming actions
+   - Create `reminder` edges for deadlines
+
+2. **Build upcoming actions endpoint**
+   - `GET /upcoming_actions` - List future tasks/events
+   - Sort by parsed time
+   - Include contextual note info
+
+**Option C: Phase 4 - Retrieval Layer**
+1. **Hybrid search implementation**
+   - Combine FTS5 + vector similarity
+   - Re-ranking algorithm
+   - Graph expansion (1-2 hops)
+
+2. **Context assembly for LLM**
+   - Assemble subgraph as context
+   - Pass to LLM for synthesis/Q&A
 
 ---
 
 ## Lessons Learned
+
+### Phase 1 & 2 Insights
 
 1. **Research first, build second** - 30-note entity extraction test prevented bad architecture
 2. **Clean rewrite > incremental migration** - For small projects with no users, clean slate is faster
@@ -313,6 +455,10 @@ Response: {
 4. **Test with real data early** - 4-note test caught extraction issues before full integration
 5. **Document decisions** - Progress doc helps track "why" not just "what"
 6. **Hybrid approaches work** - LLM + traditional NLP (dateparser) = best results
+7. **Don't over-optimize prematurely** - NumPy works fine for <1K notes, FAISS can wait
+8. **Real-world thresholds differ from theory** - 0.7 similarity too strict, 0.5 is appropriate
+9. **Validate with actual content** - Manual review of edges caught threshold issues early
+10. **"A link is a link" philosophy** - Weight system captures varying connection strengths naturally
 
 ---
 
@@ -341,6 +487,6 @@ Response: {
 
 ---
 
-**Last Updated**: 2025-10-20
-**Current Phase**: Phase 1 ✅ Complete
-**Next Milestone**: Phase 2 - Semantic Layer (embeddings & auto-linking)
+**Last Updated**: 2025-10-21
+**Current Phase**: Phase 2 ✅ Complete (Semantic Layer)
+**Next Milestone**: Phase 2.5 (Clustering), Phase 3 (Prospective), or Phase 4 (Retrieval)

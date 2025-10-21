@@ -6,3 +6,8 @@ openai-agents  # OpenAI Agents SDK
 python-dotenv
 requests
 pydantic
+
+# Phase 2: Semantic Layer
+sentence-transformers  # Local embedding generation
+scikit-learn          # Cosine similarity computation
+networkx              # Graph clustering (deferred to Phase 2.5)

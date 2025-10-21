@@ -2,13 +2,13 @@
 GraphRAG Note Assistant API - Clean Rewrite
 
 Architecture:
-- Phase 1: Episodic Layer (WHO/WHAT/WHEN/WHERE extraction)
-- Phase 2: Semantic Layer (embeddings + auto-linking) - TODO
+- Phase 1: Episodic Layer (WHO/WHAT/WHEN/WHERE extraction) ✅
+- Phase 2: Semantic Layer (embeddings + auto-linking) 🔄 IN PROGRESS
 - Phase 3: Prospective Layer (time-based edges) - TODO
 - Phase 4: Retrieval Layer (hybrid search) - TODO
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
@@ -17,7 +17,7 @@ from datetime import datetime
 from .llm import initialize_llm, shutdown_llm
 from .models import ClassifyRequest, CaptureNoteResponse, EpisodicMetadata, TimeReference
 from .services.episodic import extract_episodic_metadata
-from .db.graph import store_graph_node
+from .db.graph import store_graph_node, get_graph_node
 from .notes import write_markdown
 from .db import ensure_db
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, get_db_connection
@@ -60,15 +60,16 @@ async def health():
 
 
 @app.post("/capture_note", response_model=CaptureNoteResponse)
-async def capture_note(req: ClassifyRequest):
+async def capture_note(req: ClassifyRequest, background_tasks: BackgroundTasks):
     """Capture note with GraphRAG episodic metadata extraction.
 
     Flow:
     1. Extract episodic metadata (WHO/WHAT/WHEN/WHERE/tags/title) via LLM + dateparser
     2. Save markdown file with title and tags
     3. Store graph node with episodic metadata
-    4. [Phase 2 TODO] Background: Semantic linking via embeddings
-    5. [Phase 3 TODO] Create prospective edges for time references
+    4. Commit transaction & return response immediately
+    5. [Phase 2] Background: Generate embedding, create semantic/entity/tag edges
+    6. [Phase 3 TODO] Create prospective edges for time references
 
     Returns:
         CaptureNoteResponse with note_id, title, episodic metadata, and path
@@ -108,6 +109,9 @@ async def capture_note(req: ClassifyRequest):
             when=[TimeReference(**t) for t in episodic_data["when"]],
             tags=episodic_data["tags"]
         )
+
+        # Phase 2: Background tasks (don't block response)
+        background_tasks.add_task(process_semantic_and_linking, note_id)
 
         return CaptureNoteResponse(
             note_id=note_id,
@@ -152,6 +156,60 @@ async def capture_note(req: ClassifyRequest):
         )
     finally:
         # Always close connection
+        con.close()
+
+
+def process_semantic_and_linking(note_id: str):
+    """Process embedding generation and linking (runs after response sent)
+
+    Phase 2 background tasks:
+    1. Generate & store embedding
+    2. Create semantic edges (similarity-based)
+    3. Create entity links (WHO/WHAT/WHERE)
+    4. Create tag links (Jaccard similarity)
+
+    Args:
+        note_id: Note ID to process
+    """
+    from .services.semantic import generate_embedding, store_embedding, create_semantic_edges
+    from .services.linking import create_entity_links, create_tag_links
+
+    con = get_db_connection()
+
+    try:
+        print(f"[Background] Processing semantic links for {note_id}")
+
+        # 1. Generate & store embedding
+        node = get_graph_node(note_id)
+        if node:
+            embedding = generate_embedding(node['text'])
+            store_embedding(note_id, embedding, con)
+            print(f"[Background] ✅ Embedding generated for {note_id}")
+        else:
+            print(f"[Background] ⚠️  Node not found: {note_id}")
+            return
+
+        # 2. Create semantic edges
+        create_semantic_edges(note_id, con)
+        print(f"[Background] ✅ Semantic edges created for {note_id}")
+
+        # 3. Create entity links (WHO/WHAT/WHERE)
+        create_entity_links(note_id, con)
+        print(f"[Background] ✅ Entity links created for {note_id}")
+
+        # 4. Create tag links
+        create_tag_links(note_id, con)
+        print(f"[Background] ✅ Tag links created for {note_id}")
+
+        con.commit()
+        print(f"[Background] 🎉 Completed processing for {note_id}")
+
+    except Exception as e:
+        con.rollback()
+        print(f"[Background] ❌ Error processing {note_id}: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
         con.close()
 
 
