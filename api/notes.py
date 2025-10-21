@@ -24,30 +24,18 @@ def pick_filename(title: str, created_iso: str) -> str:
     slug = slugify(title)[:80]
     return f"{ymd}-{slug}.md"
 
-def write_markdown(title: str, tags: list, body: str, related_ids=None, status=None,
-                   needs_review=False, reasoning=None, enrichment=None, db_connection=None):
-    """Write note to disk and index in SQLite with optional multi-dimensional metadata.
+def write_markdown(title: str, tags: list, body: str, db_connection=None):
+    """Write note to disk and index in SQLite (GraphRAG version - simplified).
 
     Args:
         title: Note title
         tags: List of tags
         body: Note content
-        related_ids: List of related note IDs
-        status: Optional status (only for tasks)
-        needs_review: Whether note needs review
-        reasoning: Review reasoning
-        enrichment: Optional dict from enrich_note_metadata() with:
-            - has_action_items, is_social, is_emotional, is_knowledge, is_exploratory: Boolean dimensions
-            - people: List[dict]
-            - entities: List[str]
-            - emotions: List[str]
-            - time_references: List[dict]
+        db_connection: Optional database connection for transaction
 
     Returns:
         Tuple of (note_id, path, title)
     """
-    related_ids = related_ids or []
-    enrichment = enrichment or {}
     created = _iso_now()
     updated = created
     nid = f"{created}_{uuid.uuid4().hex[:4]}"
@@ -60,56 +48,14 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
     fname = pick_filename(title or "note", created)
     path = notes_dir / fname
 
-    # Prepare frontmatter
+    # Prepare frontmatter (minimal - episodic metadata lives in graph_nodes table)
     front = {
         "id": nid,
         "title": title or body.splitlines()[0][:60] if body else "Untitled",
         "tags": tags,
-        "related_ids": related_ids,
         "created": created,
         "updated": updated
     }
-
-    # Add status if it's a task
-    if status:
-        front["status"] = status
-
-    # Add review flag (no fake confidence in frontmatter)
-    if needs_review:
-        front["needs_review"] = needs_review
-    if reasoning:
-        front["review_reason"] = reasoning
-
-    # Add enrichment metadata to frontmatter (Phase 2: emotions only, not contexts)
-    if enrichment:
-        # Emotions (stored in frontmatter for visibility)
-        emotions = enrichment.get("emotions", [])
-        if emotions:
-            front["dimensions"] = [
-                {"type": "emotion", "value": emotion}
-                for emotion in emotions
-            ]
-
-        # Entities
-        entities = {}
-        people = enrichment.get("people", [])
-        if people:
-            entities["people"] = [
-                p.get("name") if isinstance(p, dict) else p
-                for p in people
-            ]
-
-        all_entities = enrichment.get("entities", [])
-        if all_entities:
-            entities["entities"] = all_entities
-
-        if entities:
-            front["entities"] = entities
-
-        # Time references
-        time_refs = enrichment.get("time_references", [])
-        if time_refs:
-            front["time_references"] = time_refs
 
     # Write file
     content = "---\n"
@@ -119,14 +65,7 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
 
     path.write_text(content, encoding='utf-8')
 
-    # Extract boolean dimensions from enrichment
-    has_action_items = enrichment.get("has_action_items", False) if enrichment else False
-    is_social = enrichment.get("is_social", False) if enrichment else False
-    is_emotional = enrichment.get("is_emotional", False) if enrichment else False
-    is_knowledge = enrichment.get("is_knowledge", False) if enrichment else False
-    is_exploratory = enrichment.get("is_exploratory", False) if enrichment else False
-
-    # Index in SQLite
+    # Index in SQLite (minimal - no deprecated dimension flags)
     index_note(
         note_id=nid,
         title=front["title"],
@@ -134,15 +73,15 @@ def write_markdown(title: str, tags: list, body: str, related_ids=None, status=N
         tags=tags,
         path=str(path),
         created=created,
-        status=status,
-        needs_review=needs_review,
-        review_reason=reasoning,  # Use reasoning as review_reason
-        has_action_items=has_action_items,
-        is_social=is_social,
-        is_emotional=is_emotional,
-        is_knowledge=is_knowledge,
-        is_exploratory=is_exploratory,
-        db_connection=db_connection  # Pass shared connection
+        status=None,  # Deprecated
+        needs_review=False,  # Deprecated
+        review_reason=None,  # Deprecated
+        has_action_items=False,  # Deprecated
+        is_social=False,  # Deprecated
+        is_emotional=False,  # Deprecated
+        is_knowledge=False,  # Deprecated
+        is_exploratory=False,  # Deprecated
+        db_connection=db_connection
     )
 
     return nid, str(path), front["title"]
