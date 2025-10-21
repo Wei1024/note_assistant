@@ -145,5 +145,60 @@ def ensure_db():
         )
     """)
 
+    # ========================================================================
+    # LLM Operations Audit Log (Phase 4: Debugging & Optimization)
+    # ========================================================================
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS llm_operations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            -- Operation context
+            note_id TEXT,
+            operation_type TEXT NOT NULL,
+            created TEXT NOT NULL,
+
+            -- LLM metadata
+            model TEXT NOT NULL,
+            prompt_version TEXT,
+
+            -- Performance metrics
+            duration_ms INTEGER,
+            tokens_input INTEGER,
+            tokens_output INTEGER,
+            cost_usd REAL,
+
+            -- Raw data (for debugging)
+            prompt_text TEXT,
+            raw_response TEXT,
+            parsed_output TEXT,
+
+            -- Error tracking
+            error TEXT,
+            success BOOLEAN DEFAULT 1,
+
+            FOREIGN KEY(note_id) REFERENCES notes_meta(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_llm_ops_note
+        ON llm_operations(note_id)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_llm_ops_type
+        ON llm_operations(operation_type)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_llm_ops_created
+        ON llm_operations(created)
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_llm_ops_success
+        ON llm_operations(success)
+    """)
+
     con.commit()
     con.close()
