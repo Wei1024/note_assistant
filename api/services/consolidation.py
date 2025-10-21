@@ -13,6 +13,7 @@ from typing import List, Dict, Optional
 from ..config import DB_PATH
 from ..llm import get_llm
 from ..llm.prompts import Prompts
+from ..llm.audit import track_llm_call
 from ..repositories import graph_repo, notes_repo
 
 
@@ -332,8 +333,13 @@ async def suggest_links_batch(new_note_text: str, candidates: List[Dict]) -> Lis
     )
 
     try:
-        response = await llm.ainvoke(prompt)
-        result = json.loads(response.content)
+        # Track LLM call for audit logging
+        with track_llm_call('consolidation', prompt) as tracker:
+            response = await llm.ainvoke(prompt)
+            tracker.set_response(response)
+
+            result = json.loads(response.content)
+            tracker.set_parsed_output(result)
 
         # Handle both array and single object responses
         if isinstance(result, dict):

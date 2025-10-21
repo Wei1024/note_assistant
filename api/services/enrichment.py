@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from ..llm import get_llm
 from ..llm.prompts import Prompts
+from ..llm.audit import track_llm_call
 from ..config import WORKING_FOLDERS
 
 
@@ -51,8 +52,13 @@ async def enrich_note_metadata(text: str, primary_classification: dict) -> dict:
     prompt = Prompts.ENRICH_METADATA.format(text=text, primary_context=primary_context)
 
     try:
-        response = await llm.ainvoke(prompt)
-        result = json.loads(response.content)
+        # Track LLM call for audit logging
+        with track_llm_call('enrichment', prompt) as tracker:
+            response = await llm.ainvoke(prompt)
+            tracker.set_response(response)
+
+            result = json.loads(response.content)
+            tracker.set_parsed_output(result)
 
         # Ensure all boolean dimensions exist
         result.setdefault("has_action_items", False)

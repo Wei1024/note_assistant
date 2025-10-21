@@ -7,6 +7,7 @@ from langchain_core.tools import tool
 from ..config import VALID_FOLDERS, WORKING_FOLDERS, CLASSIFICATION_CONFIDENCE_THRESHOLD
 from ..llm import get_llm
 from ..llm.prompts import Prompts
+from ..llm.audit import track_llm_call
 
 
 def _determine_needs_review(result: dict, raw_text: str) -> tuple[bool, list[str]]:
@@ -135,8 +136,13 @@ async def classify_note_async(raw_text: str) -> dict:
     prompt = Prompts.CLASSIFY_NOTE.format(text=raw_text)
 
     try:
-        response = await llm.ainvoke(prompt)  # Async call
-        result = json.loads(response.content)
+        # Track LLM call for audit logging
+        with track_llm_call('classification', prompt) as tracker:
+            response = await llm.ainvoke(prompt)  # Async call
+            tracker.set_response(response)
+
+            result = json.loads(response.content)
+            tracker.set_parsed_output(result)
 
         # Extract dimensions from LLM response
         dimensions = result.get("dimensions", {})
