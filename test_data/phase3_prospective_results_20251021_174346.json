@@ -1,0 +1,707 @@
+{
+  "timestamp": "20251021_174346",
+  "metrics": {
+    "contains_accuracy": 0.8333333333333334,
+    "contains_tp": 16,
+    "contains_fp": 3,
+    "contains_fn": 2,
+    "item_count_accuracy": 0.7666666666666667,
+    "timedata_linking_accuracy": 0.46153846153846156,
+    "total_test_cases": 30
+  },
+  "results": [
+    {
+      "note_id": "1",
+      "note_text": "Met with Sarah today about FAISS implementation. Need to research vector search alternatives by Friday.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "research vector search alternatives",
+            "timedata": "2025-10-25T00:00:00"
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Research vector search alternatives for FAISS implementation",
+            "timedata": "2025-10-24T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "today",
+          "parsed": "2025-10-21T00:00:00",
+          "type": "relative"
+        },
+        {
+          "original": "Friday",
+          "parsed": "2025-10-24T00:00:00",
+          "type": "absolute"
+        }
+      ]
+    },
+    {
+      "note_id": "2",
+      "note_text": "Had lunch with Tom at Caf\u00e9 Awesome. Great conversation about AI startups.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Explore potential AI startup opportunities or partnerships based on the conversation with Tom.",
+            "timedata": null
+          },
+          {
+            "content": "Discuss next steps for evaluating AI startup ideas with Tom.",
+            "timedata": null
+          },
+          {
+            "content": "Identify key questions to answer about AI startup viability and market demand.",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "3",
+      "note_text": "TODO: Call Mom tomorrow at 2pm. Also need to review the proposal she sent.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "call Mom",
+            "timedata": "2025-10-22T14:00:00"
+          },
+          {
+            "content": "review proposal",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Call Mom to discuss the proposal she sent",
+            "timedata": "2025-10-22T14:00:00"
+          },
+          {
+            "content": "Review the proposal sent by Mom",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "tomorrow at 2pm",
+          "parsed": "2025-10-22T14:00:00",
+          "type": "relative"
+        }
+      ]
+    },
+    {
+      "note_id": "4",
+      "note_text": "Doctor appointment next Tuesday at 10am for annual checkup",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Review medical history and discuss health goals with doctor during annual checkup",
+            "timedata": "2025-10-28T10:00:00"
+          },
+          {
+            "content": "Prepare a list of health concerns or questions to ask the doctor before the appointment",
+            "timedata": "2025-10-28T10:00:00"
+          },
+          {
+            "content": "Follow up on any recommended screenings or preventive measures after the appointment",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "next Tuesday at 10am",
+          "parsed": "2025-10-28T10:00:00",
+          "type": "relative"
+        }
+      ]
+    },
+    {
+      "note_id": "5",
+      "note_text": "Finished the authentication refactor. Tests are passing. Ready to deploy.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "6",
+      "note_text": "Should I use Redis or Memcached for caching? Need to benchmark performance.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "benchmark Redis vs Memcached performance",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Benchmark the performance of Redis and Memcached to determine which is better for caching",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "7",
+      "note_text": "Planning to add bulk export feature, API rate limiting, and webhook support in Q2.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "add bulk export, API rate limiting, and webhook support",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Evaluate requirements and design for the bulk export feature",
+            "timedata": "2025-06-30T00:00:00"
+          },
+          {
+            "content": "Assess API rate limiting strategy and implement appropriate limits",
+            "timedata": "2025-06-30T00:00:00"
+          },
+          {
+            "content": "Determine webhook implementation approach and integration points",
+            "timedata": "2025-06-30T00:00:00"
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "8",
+      "note_text": "Meeting notes: Discussed OAuth2 implementation with Alex. Action item: I'll implement it by Friday.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "implement OAuth2",
+            "timedata": "2025-10-25T00:00:00"
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Implement OAuth2 authentication as discussed with Alex",
+            "timedata": "2025-10-24T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "Friday",
+          "parsed": "2025-10-24T00:00:00",
+          "type": "absolute"
+        }
+      ]
+    },
+    {
+      "note_id": "9",
+      "note_text": "The hippocampus replays experiences during sleep to strengthen neural pathways. Fascinating!",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "10",
+      "note_text": "How does PostgreSQL's EXPLAIN ANALYZE work? Should learn more about query optimization.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "learn about PostgreSQL EXPLAIN ANALYZE and query optimization",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Learn more about PostgreSQL's EXPLAIN ANALYZE to understand how it works and improve query optimization skills",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "11",
+      "note_text": "Deploy to production checklist: 1) Run tests 2) Update changelog 3) Merge to main 4) Tag release 5) Monitor",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "deploy to production: run tests, update changelog, merge, tag, monitor",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "12",
+      "note_text": "Random thought: Could quantum computing help with note search? Probably overkill for now.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "13",
+      "note_text": "SQLite FTS5 supports boolean queries with AND/OR operators. Example: 'python AND search'",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "14",
+      "note_text": "Feeling overwhelmed with all these tasks. Need to prioritize better and focus on what matters.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "prioritize tasks and focus on what matters",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Prioritize tasks to focus on what matters",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "15",
+      "note_text": "Dentist appointment next Tuesday at 10am. Need to prepare questions about teeth sensitivity.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "prepare questions about teeth sensitivity",
+            "timedata": "2025-10-29T10:00:00"
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Prepare questions about teeth sensitivity for the dentist appointment",
+            "timedata": "2025-10-28T10:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "next Tuesday at 10am",
+          "parsed": "2025-10-28T10:00:00",
+          "type": "relative"
+        }
+      ]
+    },
+    {
+      "note_id": "16",
+      "note_text": "What if we built the entire app as a single-page React app? Need to decide on architecture.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "decide on app architecture (SPA vs SSR)",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Decide on the architecture for building the entire app as a single-page React app",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "17",
+      "note_text": "Client wants the feature by end of month. Need to follow up with PM about timeline concerns.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "follow up with PM about timeline concerns",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Follow up with PM to clarify timeline concerns regarding the feature delivery by end of month",
+            "timedata": "2025-10-31T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "end of month",
+          "parsed": "2025-10-31T00:00:00",
+          "type": "absolute"
+        }
+      ]
+    },
+    {
+      "note_id": "18",
+      "note_text": "Weekly review: Completed 8/10 goals. Feeling accomplished. Next week: improve time estimation.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "improve time estimation",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Improve time estimation for future tasks",
+            "timedata": "2025-10-28T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "Next week",
+          "parsed": "2025-10-28T00:00:00",
+          "type": "relative"
+        },
+        {
+          "original": "Weekly",
+          "parsed": null,
+          "type": "recurring"
+        }
+      ]
+    },
+    {
+      "note_id": "19",
+      "note_text": "Remember to buy groceries: milk, eggs, bread, coffee",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "buy groceries: milk, eggs, bread, coffee",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "20",
+      "note_text": "The sunset today was absolutely gorgeous. Feeling grateful for simple moments.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": [
+        {
+          "original": "today",
+          "parsed": "2025-10-21T00:00:00",
+          "type": "relative"
+        }
+      ]
+    },
+    {
+      "note_id": "21",
+      "note_text": "Lunch with Tom tomorrow. He's working on AI startups. Should ask him about funding strategies.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "ask Tom about funding strategies",
+            "timedata": "2025-10-22T00:00:00"
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Ask Tom about funding strategies for AI startups during lunch tomorrow",
+            "timedata": "2025-10-22T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "tomorrow",
+          "parsed": "2025-10-22T00:00:00",
+          "type": "relative"
+        }
+      ]
+    },
+    {
+      "note_id": "22",
+      "note_text": "Finally found the bug after 3 hours - typo in config file. Remember to add linting.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "add linting to prevent typos",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Add linting to the codebase to prevent future typos in configuration files.",
+            "timedata": "2025-10-21T03:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "3 hours",
+          "parsed": "2025-10-21T03:00:00",
+          "type": "duration"
+        }
+      ]
+    },
+    {
+      "note_id": "23",
+      "note_text": "Hypothesis: If we index notes by entities instead of folders, retrieval would be faster. Need to benchmark.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "benchmark entity indexing vs folder indexing",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Benchmark the performance of indexing notes by entities instead of folders to evaluate retrieval speed.",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "24",
+      "note_text": "Team standup: Discussed authentication refactor with Alex and Jordan. No action items from me.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "25",
+      "note_text": "For semantic search: use sentence-transformers, store in ChromaDB, cosine similarity for ranking.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Evaluate and implement semantic search using sentence-transformers, with data stored in ChromaDB and ranked using cosine similarity",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "26",
+      "note_text": "Am I building this feature the right way? Maybe I should refactor first. Or is that premature optimization?",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "decide whether to refactor before adding feature",
+            "timedata": null
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Evaluate whether refactoring is necessary before building the feature",
+            "timedata": null
+          },
+          {
+            "content": "Determine if refactoring is premature optimization",
+            "timedata": null
+          }
+        ]
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "27",
+      "note_text": "Coffee chat with Sarah about career growth and work-life balance. She gave great advice.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "28",
+      "note_text": "Research paper notes: Memory consolidation happens during sleep, specifically during REM and deep sleep phases.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": []
+    },
+    {
+      "note_id": "29",
+      "note_text": "Set up meeting with Josh this Friday to discuss the Numpy replacement idea.",
+      "expected": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "set up meeting with Josh to discuss Numpy replacement",
+            "timedata": "2025-10-25T00:00:00"
+          }
+        ]
+      },
+      "extracted": {
+        "contains_prospective": true,
+        "items": [
+          {
+            "content": "Discuss the Numpy replacement idea with Josh",
+            "timedata": "2025-10-24T00:00:00"
+          }
+        ]
+      },
+      "when_data": [
+        {
+          "original": "this Friday",
+          "parsed": "2025-10-24T00:00:00",
+          "type": "absolute"
+        }
+      ]
+    },
+    {
+      "note_id": "30",
+      "note_text": "Tired today. Not very productive. Just one of those days.",
+      "expected": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "extracted": {
+        "contains_prospective": false,
+        "items": []
+      },
+      "when_data": [
+        {
+          "original": "today",
+          "parsed": "2025-10-21T00:00:00",
+          "type": "relative"
+        }
+      ]
+    }
+  ]
+}

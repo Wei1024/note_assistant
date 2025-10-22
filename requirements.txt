@@ -7,6 +7,10 @@ python-dotenv
 requests
 pydantic
 
+# Phase 1: Episodic Layer
+dateparser            # Time reference extraction (primary)
+parsedatetime         # Time reference extraction (fallback for "next Tuesday" patterns)
+
 # Phase 2: Semantic Layer
 sentence-transformers  # Local embedding generation
 scikit-learn          # Cosine similarity computation

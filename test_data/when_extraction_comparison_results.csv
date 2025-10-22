@@ -1,0 +1,31 @@
+note_id,note_text,expected_when,current_extracted,current_f1,validated_extracted,validated_f1,llm_only_extracted,llm_only_f1,winner
+1,I have a dental appointment on October 25 at 5 pm,"[{""original"": ""October 25 at 5 pm"", ""parsed"": ""2025-10-25T17:00:00"", ""type"": ""absolute""}]","[{""original"": ""October 25 at 5 pm"", ""parsed"": ""2025-10-25T17:00:00"", ""type"": ""absolute""}]",1.000,[],0.000,[],0.000,current
+2,Met with Sarah today to discuss memory consolidation research. She mentioned some interesting findings about the hippocampus and how it relates to note-taking systems.,"[{""original"": ""today"", ""parsed"": ""2025-10-20"", ""type"": ""relative""}]","[{""original"": ""today"", ""parsed"": ""2025-10-20T00:00:00"", ""type"": ""relative""}]",1.000,[],0.000,[],0.000,current
+3,Feeling really excited about this new project! Can't wait to see how it turns out.,[],[],1.000,[],1.000,[],1.000,current
+4,Fix the authentication bug in the login API. The JWT tokens are expiring too quickly.,[],[],1.000,[],1.000,[],1.000,current
+5,Could we use Redis for caching? Or maybe Memcached? Need to explore performance tradeoffs.,[],[],1.000,[],1.000,[],1.000,current
+6,Call Mom tomorrow at 2pm,"[{""original"": ""tomorrow at 2pm"", ""parsed"": ""2025-10-21T14:00:00"", ""type"": ""relative""}]","[{""original"": ""tomorrow at 2pm"", ""parsed"": ""2025-10-21T14:00:00"", ""type"": ""relative""}]",1.000,[],0.000,[],0.000,current
+7,"Python async/await patterns: Use asyncio.gather() for concurrent operations, asyncio.create_task() for fire-and-forget",[],[],1.000,[],1.000,[],1.000,current
+8,Team standup: Discussed authentication refactor with Alex and Jordan. Action: I'll implement OAuth2 by Friday.,"[{""original"": ""Friday"", ""parsed"": ""2025-10-24"", ""type"": ""relative""}]","[{""original"": ""Friday"", ""parsed"": ""2025-10-24T00:00:00"", ""type"": ""absolute""}]",1.000,[],0.000,[],0.000,current
+9,Why do I always procrastinate on documentation? Feeling frustrated with myself.,[],[],1.000,[],1.000,[],1.000,current
+10,Brainstorming product ideas: 1) Bulk export feature 2) API rate limiting 3) Webhook support,[],[],1.000,[],1.000,[],1.000,current
+11,Just watched the Lakers game. Amazing performance!,[],[],1.000,[],1.000,[],1.000,current
+12,"Research paper notes: Memory consolidation happens during sleep, specifically during slow-wave sleep phases. The hippocampus replays experiences to strengthen neural pathways.",[],[],1.000,[],1.000,[],1.000,current
+13,Feeling overwhelmed with all these tasks. Need to prioritize better.,[],[],1.000,[],1.000,[],1.000,current
+14,Coffee chat with Sarah about career growth and work-life balance. She gave great advice about setting boundaries.,[],[],1.000,[],1.000,[],1.000,current
+15,"Buy groceries: milk, eggs, bread, coffee",[],[],1.000,[],1.000,[],1.000,current
+16,The sunset today was absolutely gorgeous. Feeling grateful.,"[{""original"": ""today"", ""parsed"": ""2025-10-20"", ""type"": ""relative""}]","[{""original"": ""today"", ""parsed"": ""2025-10-20T00:00:00"", ""type"": ""relative""}]",1.000,[],0.000,[],0.000,current
+17,"Hypothesis: If we index notes by entities instead of folders, retrieval would be 10x faster. Need to benchmark.",[],[],1.000,[],1.000,[],1.000,current
+18,Meeting notes from client call: They want the feature by end of month. Concerns about timeline. Follow up with PM.,"[{""original"": ""end of month"", ""parsed"": ""2025-10-31"", ""type"": ""relative""}]","[{""original"": ""end of month"", ""parsed"": ""2025-10-31T00:00:00"", ""type"": ""absolute""}]",1.000,[],0.000,[],0.000,current
+19,How does PostgreSQL's EXPLAIN ANALYZE work? It shows query planning costs and actual execution times.,[],[],1.000,[],1.000,[],1.000,current
+20,Tired today. Not very productive.,"[{""original"": ""today"", ""parsed"": ""2025-10-20"", ""type"": ""relative""}]","[{""original"": ""today"", ""parsed"": ""2025-10-20T00:00:00"", ""type"": ""relative""}]",1.000,[],0.000,[],0.000,current
+21,"Vector embeddings for semantic search: Use sentence-transformers, store in ChromaDB, cosine similarity for retrieval",[],[],1.000,[],1.000,[],1.000,current
+22,What if we built the entire app as a single-page React app? Or keep it server-rendered for SEO?,[],[],1.000,[],1.000,[],1.000,current
+23,Frustrated with this bug for 3 hours. Finally found it - typo in config file 🤦,"[{""original"": ""3 hours"", ""parsed"": null, ""type"": ""duration""}]","[{""original"": ""3 hours"", ""parsed"": null, ""type"": ""duration""}]",1.000,[],0.000,[],0.000,current
+24,Weekly review: Completed 8/10 goals. Need to improve time estimation. Feeling accomplished overall.,"[{""original"": ""Weekly"", ""parsed"": null, ""type"": ""recurring""}]","[{""original"": ""Weekly"", ""parsed"": null, ""type"": ""recurring""}]",1.000,[],0.000,[],0.000,current
+25,Random thought: Could quantum computing help with note search? Probably overkill but interesting to think about.,[],[],1.000,[],1.000,[],1.000,current
+26,Deploy to production: 1) Run tests 2) Update changelog 3) Merge to main 4) Tag release 5) Monitor logs,[],[],1.000,[],1.000,[],1.000,current
+27,Lunch with old college friend Tom. He's working on AI startups now. Inspired by his energy!,[],[],1.000,[],1.000,[],1.000,current
+28,SQLite FTS5 supports boolean queries with AND/OR operators. Example: 'python AND (flask OR django)',[],[],1.000,[],1.000,[],1.000,current
+29,Am I building this feature the right way? Maybe I should refactor first. Or is that premature?,[],[],1.000,[],1.000,[],1.000,current
+30,Doctor appointment next Tuesday at 10am for annual checkup,"[{""original"": ""next Tuesday at 10am"", ""parsed"": ""2025-10-28T10:00:00"", ""type"": ""relative""}]","[{""original"": ""next Tuesday at 10am"", ""parsed"": ""2025-10-28T10:00:00"", ""type"": ""relative""}]",1.000,[],0.000,[],0.000,current

@@ -11,8 +11,19 @@ import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 import dateparser
+import parsedatetime as pdt
 from ..llm import get_llm
 from ..llm.audit import track_llm_call
+
+# Parsedatetime calendar instance (module-level for reuse)
+_pdt_calendar = None
+
+def _get_parsedatetime_calendar():
+    """Get or create parsedatetime calendar instance."""
+    global _pdt_calendar
+    if _pdt_calendar is None:
+        _pdt_calendar = pdt.Calendar()
+    return _pdt_calendar
 
 
 async def extract_episodic_metadata(text: str, current_date: str = None) -> Dict[str, Any]:
@@ -169,11 +180,14 @@ def _extract_time_references(text: str, current_date: str = None) -> List[Dict[s
         current_date_obj = datetime.fromisoformat(current_date.split()[0])
 
     # Regex patterns for common time expressions
+    # ORDER MATTERS: More specific patterns first to avoid overlapping matches
     time_patterns = [
+        # Next/this/last + weekday + at + time (combined pattern - must come first!)
+        r'\b(?:next|this|last)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b',
         # Relative dates with optional times
         r'\b(?:tomorrow|today|yesterday|tonight)\b(?:\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)?\b',
-        # Next/last + day/week/month/year
-        r'\b(?:next|last)\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',
+        # Next/last + day/week/month/year (without time)
+        r'\b(?:next|this|last)\s+(?:week|month|year|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',
         # Month + day with optional time
         r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?\b(?:\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)?)?',
         # Standalone times
@@ -195,27 +209,55 @@ def _extract_time_references(text: str, current_date: str = None) -> List[Dict[s
     ]
 
     time_refs = []
-    seen = set()  # Avoid duplicates
+    seen = set()  # Avoid duplicates (text)
+    seen_positions = []  # Avoid overlapping matches (character positions)
 
     for pattern in time_patterns:
         matches = re.finditer(pattern, text, re.IGNORECASE)
         for match in matches:
             time_text = match.group(0)
+            match_start = match.start()
+            match_end = match.end()
 
             # Skip if we've seen this exact text
             if time_text.lower() in seen:
                 continue
-            seen.add(time_text.lower())
 
-            # Try to parse with dateparser
+            # Skip if this match overlaps with a previously matched region
+            overlaps = False
+            for (prev_start, prev_end) in seen_positions:
+                # Check if ranges overlap
+                if not (match_end <= prev_start or match_start >= prev_end):
+                    overlaps = True
+                    break
+
+            if overlaps:
+                continue
+
+            seen.add(time_text.lower())
+            seen_positions.append((match_start, match_end))
+
+            # Try to parse with dateparser (primary)
             parsed_date = dateparser.parse(
                 time_text,
                 settings={
                     'RELATIVE_BASE': current_date_obj,
                     'TIMEZONE': 'America/Los_Angeles',
-                    'RETURN_AS_TIMEZONE_AWARE': False
+                    'RETURN_AS_TIMEZONE_AWARE': False,
+                    'PREFER_DATES_FROM': 'future'  # Prefer future dates for ambiguous weekdays
                 }
             )
+
+            # If dateparser failed, try parsedatetime (fallback for "next Tuesday", "this Friday")
+            if parsed_date is None:
+                cal = _get_parsedatetime_calendar()
+                dt, status = cal.parseDT(time_text, sourceTime=current_date_obj)
+                if status > 0:  # status > 0 means successful parsing
+                    # Fix parsedatetime's 9am default for date-only parses
+                    # status == 1 means date only (no time component)
+                    if status == 1:
+                        dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                    parsed_date = dt
 
             # Determine type
             time_type = "absolute"
@@ -227,9 +269,25 @@ def _extract_time_references(text: str, current_date: str = None) -> List[Dict[s
             elif any(word in time_lower for word in ["weekly", "daily", "monthly", "annually"]):
                 time_type = "recurring"
 
+            # Special handling: Check context for duration patterns
+            # If duration appears in past context, set parsed to None
+            is_past_duration = False
+            if time_type == "duration":
+                # Get surrounding context (50 chars before and after)
+                context_start = max(0, match_start - 50)
+                context_end = min(len(text), match_end + 50)
+                context = text[context_start:context_end].lower()
+
+                # Check for past-context indicators
+                past_indicators = ["for", "after", "took", "spent", "waited", "lasted"]
+                # Check if duration is preceded by past context words
+                before_text = text[context_start:match_start].lower()
+                if any(indicator in before_text for indicator in past_indicators):
+                    is_past_duration = True
+
             time_ref = {
                 "original": time_text,
-                "parsed": parsed_date.isoformat() if parsed_date else None,
+                "parsed": None if is_past_duration else (parsed_date.isoformat() if parsed_date else None),
                 "type": time_type
             }
 
