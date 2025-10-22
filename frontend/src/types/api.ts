@@ -63,14 +63,30 @@ export type SynthesisStreamEvent =
   | { type: 'done' }
 
 /**
- * Knowledge graph node (extends D3 SimulationNodeDatum for positioning)
+ * Episodic metadata for GraphRAG nodes
+ */
+export interface EpisodicMetadata {
+  who: string[]         // WHO entities (people, organizations)
+  what: string[]        // WHAT entities (topics, projects, technologies)
+  where: string[]       // WHERE entities (locations, platforms)
+  when: TimeReference[] // WHEN time references
+  tags: string[]        // User-defined tags
+}
+
+/**
+ * Knowledge graph node (GraphRAG schema)
  */
 export interface GraphNode {
-  id: string            // Note ID (e.g., "2025-10-16T15:30:00-07:00_a27f")
-  path: string
+  id: string            // Note ID (e.g., "note_20251021_143022_abc123")
+  text: string          // Full note text
   created: string       // ISO timestamp
-  dimensions: Dimensions
-  cluster_id?: number   // Cluster assignment from Louvain algorithm
+  file_path: string     // Path to markdown file
+  who: string[]         // WHO entities
+  what: string[]        // WHAT entities
+  where: string[]       // WHERE entities
+  when: TimeReference[] // WHEN time references
+  tags: string[]        // Tags
+  cluster_id?: number   // Cluster assignment (Phase 2.5)
   // D3 simulation properties (added at runtime)
   x?: number
   y?: number
@@ -81,12 +97,14 @@ export interface GraphNode {
 }
 
 /**
- * Knowledge graph edge (link between notes)
+ * Knowledge graph edge (GraphRAG schema)
  */
 export interface GraphEdge {
-  from: string          // Source note ID
-  to: string            // Target note ID
-  type: 'related' | 'spawned' | 'references' | 'contradicts'
+  source: string        // Source note ID (D3 convention)
+  target: string        // Target note ID (D3 convention)
+  relation: 'semantic' | 'entity_link' | 'tag_link' | 'time_next' | 'reminder'
+  weight: number        // Relationship strength
+  metadata?: Record<string, any>  // Additional edge metadata
 }
 
 /**

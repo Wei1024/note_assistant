@@ -3,11 +3,11 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import * as d3 from 'd3'
 import { marked } from 'marked'
 import { useKnowledgeGraph } from '@/composables/useKnowledgeGraph'
-import { colors, getDimensionColor, getClusterColor } from '@/design/colors'
+import { colors, getClusterColor } from '@/design/colors'
 import { typography } from '@/design/typography'
 import { spacing } from '@/design/spacing'
 import { graph, getNodeRadius } from '@/design/graph'
-import type { GraphNode, Dimensions } from '@/types/api'
+import type { GraphNode } from '@/types/api'
 
 // ========================================
 // State Management
@@ -20,20 +20,16 @@ const {
   loading,
   loadingContent,
   error,
-  clusters,
-  selectedCluster,
-  selectedClusterId,
+  filteredEdges,
+  filterRelation,
   loadFullGraph,
-  loadClusteredGraph,
   selectNode,
-  selectCluster,
   clearSelection,
+  setRelationFilter,
 } = useKnowledgeGraph()
 
 const svgRef = ref<SVGSVGElement | null>(null)
-const minLinks = ref(1) // For full graph: only show notes with links
-const graphLimit = ref(100) // For full graph: max nodes
-const showClusters = ref(false) // Toggle cluster view
+const showClusters = ref(false) // Toggle cluster view (Phase 2.5)
 
 // Floating card position
 const cardPosition = ref({ x: 0, y: 0 })
@@ -55,29 +51,26 @@ let currentZoom: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null
 let currentSvg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null
 
 /**
- * Get node color based on current view mode
+ * Get node color based on entity types (GraphRAG)
  */
 function getNodeColor(node: GraphNode): string {
-  // Cluster mode: color by cluster_id
+  // Cluster mode: color by cluster_id (Phase 2.5)
   if (showClusters.value && node.cluster_id !== undefined) {
     return getClusterColor(node.cluster_id)
   }
 
-  // Dimension mode: color by dominant dimension
-  const activeDimensions = Object.entries(node.dimensions)
-    .filter(([_, value]) => value === true)
+  // Color by entity richness
+  const entityCount = (node.who?.length || 0) + (node.what?.length || 0) + (node.where?.length || 0)
 
-  if (activeDimensions.length === 0) {
-    return colors.mutedSage // No dimensions
+  if (entityCount === 0) {
+    return colors.mutedSage // No entities
+  } else if (entityCount >= 5) {
+    return colors.vibrantGold // Rich metadata
+  } else if (entityCount >= 3) {
+    return colors.deepPurple // Medium metadata
+  } else {
+    return colors.softBlue // Sparse metadata
   }
-
-  // Return color of first active dimension
-  const dimensionKey = activeDimensions[0][0] as keyof Dimensions
-  const colorKey = dimensionKey.replace(/_/g, '')
-    .replace(/^(.)/, (m) => m.toLowerCase())
-    .replace(/([A-Z])/g, (m) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()) as keyof typeof colors.dimension
-
-  return getDimensionColor(colorKey)
 }
 
 /**
@@ -89,10 +82,10 @@ function truncateText(text: string, maxLength: number): string {
 }
 
 /**
- * Extract title from path
+ * Extract title from file path or ID
  */
 function getNodeTitle(node: GraphNode): string {
-  const filename = node.path.split('/').pop() || node.id
+  const filename = node.file_path?.split('/').pop() || node.id
   const title = filename.replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/\.md$/, '')
   return truncateText(title, 20)
 }
@@ -205,17 +198,18 @@ function renderGraph() {
 
   const { nodes, edges } = graphData.value
 
-  // Map edges to D3 format (from/to → source/target)
+  // Edges are already in D3 format (source/target) from GraphRAG backend
   const d3Links = edges.map(edge => ({
-    source: edge.from,
-    target: edge.to,
-    type: edge.type
+    source: edge.source,
+    target: edge.target,
+    relation: edge.relation,
+    weight: edge.weight
   }))
 
   // Calculate connection counts for sizing
   const connectionCounts = new Map<string, number>()
   nodes.forEach(node => {
-    const count = edges.filter(e => e.from === node.id || e.to === node.id).length
+    const count = edges.filter(e => e.source === node.id || e.target === node.id).length
     connectionCounts.set(node.id, count)
   })
 
@@ -373,8 +367,8 @@ function renderGraph() {
       connectedNodeIds.add(selectedNodeId.value)
 
       edges.forEach(edge => {
-        if (edge.from === selectedNodeId.value) connectedNodeIds.add(edge.to)
-        if (edge.to === selectedNodeId.value) connectedNodeIds.add(edge.from)
+        if (edge.source === selectedNodeId.value) connectedNodeIds.add(edge.target)
+        if (edge.target === selectedNodeId.value) connectedNodeIds.add(edge.source)
       })
 
       node
@@ -414,29 +408,12 @@ function handleClusterClick(clusterId: number, event: MouseEvent) {
   cardVisible.value = true
 }
 
-function truncateTheme(theme: string, maxLength: number = 50): string {
-  // Remove LLM artifacts
-  const cleaned = theme.replace(/^{\s*theme:\s*/, '').replace(/\s*}$/, '').trim()
-  return truncateText(cleaned, maxLength)
-}
-
-async function toggleClusterView() {
-  showClusters.value = !showClusters.value
-
-  if (showClusters.value) {
-    await loadClusteredGraph(minLinks.value, graphLimit.value)
-  } else {
-    await loadFullGraph(minLinks.value, undefined, graphLimit.value)
-  }
-}
-
 // ========================================
 // Lifecycle & Watchers
 // ========================================
 onMounted(async () => {
-  // Load clustered graph by default
-  showClusters.value = true
-  await loadClusteredGraph(minLinks.value, graphLimit.value)
+  // Load full graph on mount
+  await loadFullGraph()
 })
 
 onBeforeUnmount(() => {
@@ -466,27 +443,67 @@ watch(graphData, async () => {
       <!-- Node count info -->
       <div v-if="graphData" :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary }">
         {{ graphData.nodes.length }} notes, {{ graphData.edges.length }} connections
-        <span v-if="showClusters && clusters.length" :style="{ marginLeft: spacing[3], color: colors.text.muted }">
-          | {{ clusters.length }} clusters
-        </span>
       </div>
 
-      <!-- View toggle -->
-      <button
-        @click="toggleClusterView"
-        :style="{
-          padding: `${spacing[2]} ${spacing[4]}`,
-          backgroundColor: showClusters ? colors.accent.primary : colors.background.hover,
-          color: showClusters ? colors.text.onDark : colors.text.primary,
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: typography.fontSize.sm,
-          fontWeight: typography.fontWeight.medium
-        }"
-      >
-        {{ showClusters ? 'Show Dimensions' : 'Show Clusters' }}
-      </button>
+      <!-- Edge type filter -->
+      <div :style="{ display: 'flex', gap: spacing[2] }">
+        <button
+          @click="setRelationFilter(null)"
+          :style="{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: filterRelation === null ? colors.accent.primary : colors.background.hover,
+            color: filterRelation === null ? colors.text.onDark : colors.text.primary,
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm
+          }"
+        >
+          All
+        </button>
+        <button
+          @click="setRelationFilter('semantic')"
+          :style="{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: filterRelation === 'semantic' ? colors.vibrantGold : colors.background.hover,
+            color: filterRelation === 'semantic' ? colors.text.onDark : colors.text.primary,
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm
+          }"
+        >
+          Semantic
+        </button>
+        <button
+          @click="setRelationFilter('entity_link')"
+          :style="{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: filterRelation === 'entity_link' ? colors.deepPurple : colors.background.hover,
+            color: filterRelation === 'entity_link' ? colors.text.onDark : colors.text.primary,
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm
+          }"
+        >
+          Entity
+        </button>
+        <button
+          @click="setRelationFilter('tag_link')"
+          :style="{
+            padding: `${spacing[2]} ${spacing[3]}`,
+            backgroundColor: filterRelation === 'tag_link' ? colors.softBlue : colors.background.hover,
+            color: filterRelation === 'tag_link' ? colors.text.onDark : colors.text.primary,
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: typography.fontSize.sm
+          }"
+        >
+          Tags
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -499,55 +516,8 @@ watch(graphData, async () => {
       {{ error }}
     </div>
 
-    <!-- Main Content: Cluster sidebar + Graph -->
-    <div class="main-content" :style="{ marginTop: spacing[4], position: 'relative', display: 'flex', gap: spacing[4] }">
-      <!-- Cluster List Sidebar -->
-      <aside
-        v-if="showClusters && clusters.length"
-        class="cluster-list"
-        :style="{
-          width: '220px',
-          flexShrink: 0,
-          maxHeight: '600px',
-          overflowY: 'auto',
-          padding: spacing[3],
-          backgroundColor: colors.background.card,
-          borderRadius: '8px',
-          border: `1px solid ${colors.border.subtle}`
-        }"
-      >
-        <h3 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, marginBottom: spacing[3], color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em' }">
-          Clusters
-        </h3>
-        <div :style="{ display: 'flex', flexDirection: 'column', gap: spacing[2] }">
-          <button
-            v-for="cluster in clusters"
-            :key="cluster.cluster_id"
-            @click="(e) => handleClusterClick(cluster.cluster_id, e)"
-            :style="{
-              padding: spacing[2],
-              backgroundColor: selectedClusterId === cluster.cluster_id ? colors.background.hover : 'transparent',
-              border: `1px solid ${getClusterColor(cluster.cluster_id)}`,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'all 150ms ease'
-            }"
-            class="cluster-tag"
-          >
-            <div :style="{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[1] }">
-              <span :style="{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: getClusterColor(cluster.cluster_id), flexShrink: 0 }"></span>
-              <span :style="{ fontSize: typography.fontSize.xs, fontWeight: typography.fontWeight.medium, color: colors.text.secondary }">
-                {{ cluster.size }} notes
-              </span>
-            </div>
-            <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.primary, margin: 0, lineHeight: '1.4' }">
-              {{ truncateTheme(cluster.theme, 45) }}
-            </p>
-          </button>
-        </div>
-      </aside>
-
+    <!-- Main Content: Graph -->
+    <div class="main-content" :style="{ marginTop: spacing[4], position: 'relative' }">
       <!-- Graph Canvas -->
       <div class="graph-canvas" :style="{
         flex: 1,
@@ -590,7 +560,7 @@ watch(graphData, async () => {
         <!-- Card Header -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: spacing[3] }">
           <h3 :style="{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold, margin: 0, flex: 1 }">
-            {{ selectedNode ? getNodeTitle(selectedNode) : (selectedCluster ? truncateTheme(selectedCluster.theme, 60) : '') }}
+            {{ selectedNode ? getNodeTitle(selectedNode) : '' }}
           </h3>
           <button
             @click="hideCard"
@@ -616,22 +586,49 @@ watch(graphData, async () => {
             📅 {{ new Date(selectedNode.created).toLocaleString() }}
           </p>
 
-          <div :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', marginBottom: spacing[4] }">
-            <span
-              v-for="(value, key) in selectedNode.dimensions"
-              :key="key"
-              v-show="value"
-              :style="{
-                padding: `${spacing[1]} ${spacing[3]}`,
-                backgroundColor: getDimensionColor(key as any),
-                color: colors.text.onDark,
-                borderRadius: '9999px',
-                fontSize: typography.fontSize.sm,
-                fontWeight: typography.fontWeight.medium
-              }"
-            >
-              {{ key.replace(/^(is|has)/, '').replace(/([A-Z])/g, ' $1').trim() }}
-            </span>
+          <!-- Episodic Metadata -->
+          <div :style="{ marginBottom: spacing[4], fontSize: typography.fontSize.sm }">
+            <!-- WHO -->
+            <div v-if="selectedNode.who?.length" :style="{ marginBottom: spacing[2] }">
+              <span :style="{ fontWeight: typography.fontWeight.semibold, color: colors.text.secondary }">👥 WHO:</span>
+              <span :style="{ marginLeft: spacing[2], color: colors.text.primary }">
+                {{ selectedNode.who.join(', ') }}
+              </span>
+            </div>
+
+            <!-- WHAT -->
+            <div v-if="selectedNode.what?.length" :style="{ marginBottom: spacing[2] }">
+              <span :style="{ fontWeight: typography.fontWeight.semibold, color: colors.text.secondary }">💡 WHAT:</span>
+              <span :style="{ marginLeft: spacing[2], color: colors.text.primary }">
+                {{ selectedNode.what.join(', ') }}
+              </span>
+            </div>
+
+            <!-- WHERE -->
+            <div v-if="selectedNode.where?.length" :style="{ marginBottom: spacing[2] }">
+              <span :style="{ fontWeight: typography.fontWeight.semibold, color: colors.text.secondary }">📍 WHERE:</span>
+              <span :style="{ marginLeft: spacing[2], color: colors.text.primary }">
+                {{ selectedNode.where.join(', ') }}
+              </span>
+            </div>
+
+            <!-- Tags -->
+            <div v-if="selectedNode.tags?.length" :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap', marginTop: spacing[3] }">
+              <span
+                v-for="tag in selectedNode.tags"
+                :key="tag"
+                :style="{
+                  padding: `${spacing[1]} ${spacing[3]}`,
+                  backgroundColor: colors.deepPurple,
+                  color: colors.text.onDark,
+                  borderRadius: '9999px',
+                  fontSize: typography.fontSize.xs,
+                  fontWeight: typography.fontWeight.medium
+                }"
+              >
+                #{{ tag }}
+              </span>
+            </div>
           </div>
 
           <div :style="{
@@ -655,89 +652,6 @@ watch(graphData, async () => {
             <p v-else :style="{ color: colors.text.muted, fontStyle: 'italic' }">
               No content available
             </p>
-          </div>
-        </template>
-
-        <!-- Cluster Content -->
-        <template v-else-if="selectedCluster">
-          <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary, marginBottom: spacing[3] }">
-            {{ selectedCluster.size }} notes | {{ selectedCluster.action_count }} action items
-          </p>
-
-          <!-- People -->
-          <div v-if="selectedCluster.people.length" :style="{ marginBottom: spacing[3] }">
-            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
-              👥 People
-            </h4>
-            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }">
-              <span
-                v-for="person in selectedCluster.people"
-                :key="person.name"
-                :style="{
-                  padding: `${spacing[1]} ${spacing[2]}`,
-                  backgroundColor: colors.background.hover,
-                  borderRadius: '4px',
-                  fontSize: typography.fontSize.sm
-                }"
-              >
-                {{ person.name }}{{ person.role ? ` (${person.role})` : '' }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Key Concepts -->
-          <div v-if="selectedCluster.key_concepts.length" :style="{ marginBottom: spacing[3] }">
-            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
-              💡 Key Concepts
-            </h4>
-            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: spacing[2] }">
-              <span
-                v-for="concept in selectedCluster.key_concepts.slice(0, 5)"
-                :key="concept.concept"
-                :style="{
-                  padding: `${spacing[1]} ${spacing[2]}`,
-                  backgroundColor: colors.background.hover,
-                  borderRadius: '4px',
-                  fontSize: typography.fontSize.sm
-                }"
-              >
-                {{ concept.concept }} ({{ concept.frequency }})
-              </span>
-            </div>
-          </div>
-
-          <!-- Emotions -->
-          <div v-if="selectedCluster.emotions.length" :style="{ marginBottom: spacing[3] }">
-            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
-              😊 Emotions
-            </h4>
-            <p :style="{ fontSize: typography.fontSize.sm, color: colors.text.primary }">
-              {{ selectedCluster.emotions.join(', ') }}
-            </p>
-          </div>
-
-          <!-- Dimensions -->
-          <div :style="{ marginBottom: spacing[3] }">
-            <h4 :style="{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.text.secondary, marginBottom: spacing[2] }">
-              🏷️ Dimensions
-            </h4>
-            <div :style="{ display: 'flex', gap: spacing[2], flexWrap: 'wrap' }">
-              <span
-                v-for="(value, key) in selectedCluster.dimensions"
-                :key="key"
-                v-show="value"
-                :style="{
-                  padding: `${spacing[1]} ${spacing[3]}`,
-                  backgroundColor: getDimensionColor(key as any),
-                  color: colors.text.onDark,
-                  borderRadius: '9999px',
-                  fontSize: typography.fontSize.sm,
-                  fontWeight: typography.fontWeight.medium
-                }"
-              >
-                {{ key.replace(/^(is|has)/, '').replace(/([A-Z])/g, ' $1').trim() }}
-              </span>
-            </div>
           </div>
         </template>
       </aside>
