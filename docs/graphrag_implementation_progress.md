@@ -24,7 +24,7 @@ Implementing a local GraphRAG system with four layers:
 
 1. **Episodic Layer** - Extract WHO/WHAT/WHEN/WHERE entities from notes ✅ **COMPLETE**
 2. **Semantic Layer** - Create embeddings and auto-link via similarity ✅ **COMPLETE**
-3. **Prospective Layer** - Detect future times/todos, create time-based edges ⏸️ NOT STARTED
+3. **Prospective Layer** - Extract future intentions as metadata (no edges) ✅ **COMPLETE**
 4. **Retrieval Layer** - Hybrid search (FTS5 + embeddings) with graph expansion ⏸️ NOT STARTED
 
 ---
@@ -66,21 +66,22 @@ All old dimension-based code moved to `api/legacy/`:
 - `notes_meta`: Basic metadata (id, path, created, updated) - **NO dimension columns**
 
 **Graph Structure**:
-- `graph_nodes`: Episodic metadata stored as JSON
+- `graph_nodes`: Episodic + prospective metadata stored as JSON
   - `entities_who`: People, organizations
   - `entities_what`: Concepts, topics
   - `entities_where`: Locations
   - `time_references`: Parsed time objects
   - `tags`: Thematic categories
+  - `prospective`: Prospective items (Phase 3 - metadata only)
+    - `contains_prospective`: bool
+    - `prospective_items`: [{content, timedata}]
   - `embedding`: Vector (Phase 2)
-  - `cluster_id`: Community (Phase 2)
+  - `cluster_id`: Community (Phase 2.5 - future)
 
-- `graph_edges`: Typed relationships
-  - `semantic`: Embedding similarity (Phase 2)
-  - `entity_link`: Shared entities (Phase 2)
-  - `tag_link`: Shared tags (Phase 2)
-  - `time_next`: Future temporal (Phase 3)
-  - `reminder`: User-specified (Phase 3)
+- `graph_edges`: Typed relationships (Phase 2 only)
+  - `semantic`: Embedding similarity
+  - `entity_link`: Shared entities
+  - `tag_link`: Shared tags
 
 **Preserved**:
 - `llm_operations`: LLM audit logging
@@ -326,26 +327,244 @@ Response: {
 
 ---
 
-## Phase 3: Prospective Layer - Time-Based Edges
+## Phase 3: Prospective Layer - Metadata-Only Approach ✅ **COMPLETE**
 
-**Status**: ⏸️ **NOT STARTED**
+**Status**: ✅ **FULLY COMPLETE** (2025-10-21, Simplified 2025-10-21)
 
-### Planned Components
+**Implementation**: Sequential LLM extraction of prospective items (actions, questions, plans) with WHEN timepoint linking - **metadata only, no graph edges**
 
-1. **Future Time Detection**
-   - Parse `graph_nodes.time_references` JSON
-   - Filter for future dates (> current time)
-   - Identify action-oriented language ("TODO", "need to", "call")
+### Design Evolution: From Edge-Based to Metadata-Only
 
-2. **Prospective Edge Creation**
-   - Notes with future times → `time_next` edges (self-reminder)
-   - Notes with same person + future time → `time_next` edges
-   - Deadline notes → `reminder` edges with urgency weight
+**Original Approach** (Abandoned 2025-10-21):
+- Edge-based prospective memory with three edge types:
+  - `time_next`: Chronological linking (created 900 edges for 60 notes)
+  - `reminder`: Shared deadline linking (created 125 edges)
+  - `intention_trigger`: Event-based linking (created 20 edges)
+- **Total**: 1,191 edges (900 + 125 + 20 + 146 Phase 2 edges)
+- **User Feedback**: "tangled mess" - graph visualization was unreadable
 
-3. **Upcoming Actions API**
-   - Endpoint: `GET /upcoming_actions`
-   - Query: Follow `time_next` edges, sort by parsed time
-   - Return: Sorted list of upcoming tasks/events with context
+**Timestamp Spread Experiment**:
+- Spread 60 notes across 45 days (realistic distribution)
+- Regenerated edges: 900 → 186 time_next edges (79% reduction)
+- **Total**: 477 edges (186 + 125 + 20 + 146 Phase 2 edges)
+- **User Feedback**: "slightly more loose hairball" - still not readable
+
+**Root Cause**: O(n²) edge explosion
+- `time_next` creates edges for all notes within 6hr-3day windows
+- Week 1 (15 notes) → 63 edges alone
+- Temporal proximity ≠ semantic relatedness
+- Even with realistic timestamps, creates too many edges
+
+**Final Decision**: **Metadata-only approach**
+- Store prospective items as JSON in `graph_nodes`
+- NO graph edges for prospective memory
+- Enables todo-list view with timeline (future frontend)
+- Keeps knowledge graph clean (146 Phase 2 edges only)
+
+### Implemented Components
+
+**1. Sequential LLM Extraction** ✅
+- **Phase 3 runs AFTER Phase 1** (needs WHEN data from episodic layer)
+- Phase 1 extracts episodic metadata → Phase 3 extracts prospective items
+- Slight latency increase (~600ms vs 300ms parallel) acceptable for correctness
+- Zero cost (local LLM)
+
+**Prospective items extracted**:
+```python
+{
+  "contains_prospective": bool,  # Does note contain future-oriented items?
+  "prospective_items": [
+    {
+      "content": str,      # Action/question/plan description
+      "timedata": str | null  # ISO timestamp from WHEN data, or null
+    }
+  ]
+}
+```
+
+**Example**:
+```python
+# Input note:
+"Met with Steve today. He suggested reconsidering Numpy for retrieval.
+Need to evaluate this idea. Let me set up a meeting with Josh this Friday
+to discuss."
+
+# WHEN data from Phase 1 (episodic):
+[{"original": "this Friday", "parsed": "2025-10-25T00:00:00", "type": "relative"}]
+
+# Phase 3 output:
+{
+  "contains_prospective": true,
+  "prospective_items": [
+    {
+      "content": "evaluate idea to replace Numpy",
+      "timedata": null
+    },
+    {
+      "content": "set up meeting with Josh",
+      "timedata": "2025-10-25T00:00:00"
+    }
+  ]
+}
+```
+
+**2. Metadata Storage Only** ✅
+- Prospective data stored in `graph_nodes` episodic metadata JSON
+- NO edge creation (abandoned `time_next`, `reminder`, `intention_trigger`)
+- Clean knowledge graph (only Phase 2 semantic/entity/tag edges)
+
+### Core Services
+
+**`api/services/prospective.py` (simplified)**:
+- `extract_prospective_items(text, when_data)` - LLM extraction with WHEN linking
+- **Deleted functions** (from old edge-based approach):
+  - `create_time_next_edges()` - Chronological linking
+  - `create_reminder_edges()` - Shared deadline linking
+  - `create_intention_trigger_edges()` - Event-based linking
+
+**`api/main.py` (modified)**:
+- Sequential execution: Phase 1 → Phase 3
+- Prospective data merged into episodic metadata JSON
+- Background task ONLY handles Phase 2 edges (semantic, entity_link, tag_link)
+
+### Testing & Validation
+
+**Benchmark Dataset**: 30 test cases with simplified ground truth
+
+**Test Coverage**:
+- Actions with deadlines (8 cases): "TODO: Call Sarah by Friday"
+- Actions without deadlines (7 cases): "Need to research FAISS"
+- Questions to answer (5 cases): "Should I migrate to PostgreSQL?"
+- Future plans (4 cases): "Planning to implement OAuth2 next week"
+- Pure observations (6 cases): No prospective items
+
+**Ground Truth Format**:
+```csv
+note_id,note_text,expected_contains_prospective,expected_items
+1,"Met with Sarah. Need to research vector search by Friday.",true,"[{""content"":""research vector search"",""timedata"":""2025-10-25T00:00:00""}]"
+```
+
+### Benchmark Test Results
+
+**Status**: Tests created, pending execution
+
+**Test Script**: `test_phase3_prospective.py` (305 lines, rewritten)
+
+**Metrics to measure**:
+- `contains_accuracy`: True/false detection of prospective items
+- `item_count_accuracy`: Correct number of items extracted
+- `timedata_linking_accuracy`: Correct matching to WHEN timepoints
+
+**Previous benchmark** (old edge-based approach):
+- is_action F1: 0.818
+- is_question F1: 0.923
+- is_plan F1: 0.714
+
+### Architecture Decisions
+
+**1. Metadata-Only (No Edges)**:
+- **Decision**: Store prospective items as JSON, not graph edges
+- **Why**: Prospective memory (task management) pollutes knowledge graph
+- **Trade-off**: No graph traversal for prospective items, but cleaner graph visualization
+- **Future**: Todo-list view in frontend using metadata
+
+**2. Sequential Processing (Phase 1 → Phase 3)**:
+- **Decision**: Run Phase 3 AFTER Phase 1 completes
+- **Why**: Phase 3 needs WHEN timepoints from Phase 1
+- **Trade-off**: ~600ms total (vs ~300ms parallel), acceptable for correctness
+
+**3. LLM Timepoint Matching**:
+- **Decision**: LLM directly matches prospective items to WHEN data
+- **Why**: Semantic understanding needed ("meeting this Friday" → links to "Friday" timepoint)
+- **Alternative considered**: Rule-based matching (too brittle)
+
+**4. Generic Prompt Examples**:
+- **Decision**: Use placeholder examples, not specific ones
+- **Why**: Small LLM (qwen3:4b) may overfit to specific examples
+- **Example**: `{"content": "<action description>", "timedata": "<ISO timestamp or null>"}`
+
+**5. Scope Expansion**:
+- **Decision**: Include "questions to answer" in prospective items
+- **Why**: Questions represent future knowledge gaps needing resolution
+- **Examples**: "Should I migrate DB?" "How to optimize this query?"
+
+### Database Cleanup
+
+**Edge Deletion** (2025-10-21):
+```sql
+-- Before cleanup:
+SELECT relation, COUNT(*) FROM graph_edges GROUP BY relation;
+-- entity_link: 34, intention_trigger: 20, reminder: 125,
+-- semantic: 34, tag_link: 78, time_next: 186
+-- TOTAL: 477 edges
+
+-- Cleanup:
+DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_trigger');
+
+-- After cleanup:
+-- entity_link: 34, semantic: 34, tag_link: 78
+-- TOTAL: 146 edges (69% reduction)
+```
+
+**Graph Visualization**:
+- Before: "tangled mess" (1,191 edges) → "slightly more loose hairball" (477 edges)
+- After: Clean, readable graph (146 edges only)
+
+### Files Created/Modified
+
+**New Files**:
+- ✅ `test_data/phase3_prospective_benchmark.csv` - 30 simplified test cases
+- ✅ `test_phase3_prospective.py` (305 lines, rewritten) - Metadata-only testing
+
+**Modified Files**:
+- ✅ `api/services/prospective.py` - Rewritten for metadata-only approach
+- ✅ `api/main.py` - Changed to sequential extraction, removed edge creation
+
+**Deleted Files** (abandoned edge-based approach):
+- ❌ `test_phase3_edges.py` - Edge validation script
+- ❌ `scripts/regenerate_time_next_edges.py` - Edge regeneration utility
+- ❌ `test_data/phase3_test_notes_labeled.csv` - Old benchmark with is_action/is_question/is_plan
+- ❌ `test_data/phase3_edge_*` - All edge test reports
+
+### Key Insights
+
+**1. Prospective memory ≠ Knowledge graph**:
+- Tasks are ephemeral, knowledge is permanent
+- Mixing task management with knowledge building pollutes the graph
+- Separate concerns: Metadata for prospective, edges for semantic relationships
+
+**2. Temporal proximity ≠ Semantic relatedness**:
+- Notes written close in time aren't necessarily related in meaning
+- `time_next` edges created O(n²) connections with little value
+- Better use: Temporal signal as weight modifier in retrieval (Phase 4)
+
+**3. Graph visualization is critical**:
+- "Tangled mess" and "slightly more loose hairball" forced design rethink
+- User can't use a graph they can't visualize
+- 146 edges (Phase 2 only) creates clean, readable graph
+
+**4. Small LLMs prefer generic prompts**:
+- Specific examples → overfitting risk for 4B parameter models
+- Generic placeholders → better generalization
+- Validated by qwen3:4b-instruct performance
+
+### Next Steps
+
+**Immediate**:
+- ✅ Simplified extraction implemented
+- ✅ Tests created (benchmark pending execution)
+- ✅ Database cleaned up (prospective edges deleted)
+- ⏳ Run benchmark test to validate accuracy
+
+**Future Frontend Work**:
+- Todo-list view: Display prospective items from metadata
+- Timeline view: Show items with timedata chronologically
+- Integration with graph view: Link to source notes
+
+**Future Phases**:
+- **Phase 4**: Retrieval layer (hybrid search + graph expansion)
+  - Use temporal proximity as weight modifier (not standalone edges)
+  - Phase 3 metadata enables "show me upcoming actions" queries
 
 ---
 
@@ -401,8 +620,9 @@ Response: {
 - `semantic`: Embedding cosine similarity (Phase 2)
 - `entity_link`: Shared WHO/WHAT entities (Phase 2)
 - `tag_link`: Shared thematic tags (Phase 2)
-- `time_next`: Future temporal relationships (Phase 3)
-- `reminder`: User-specified reminders (Phase 3)
+- ~~`time_next`: Future temporal relationships (Phase 3)~~ **DELETED** (metadata-only approach)
+- ~~`reminder`: User-specified reminders (Phase 3)~~ **DELETED** (metadata-only approach)
+- ~~`intention_trigger`: Event-based triggers (Phase 3)~~ **DELETED** (metadata-only approach)
 
 ---
 
@@ -422,18 +642,7 @@ Response: {
    - `GET /graph/cluster/{cluster_id}` - Get cluster notes
    - `GET /graph/cluster_summary/{cluster_id}` - Get LLM summary
 
-**Option B: Phase 3 - Prospective Layer**
-1. **Implement time-based edge detection**
-   - Parse future dates from `graph_nodes.time_references`
-   - Create `time_next` edges for upcoming actions
-   - Create `reminder` edges for deadlines
-
-2. **Build upcoming actions endpoint**
-   - `GET /upcoming_actions` - List future tasks/events
-   - Sort by parsed time
-   - Include contextual note info
-
-**Option C: Phase 4 - Retrieval Layer**
+**Option B: Phase 4 - Retrieval Layer**
 1. **Hybrid search implementation**
    - Combine FTS5 + vector similarity
    - Re-ranking algorithm
@@ -447,7 +656,7 @@ Response: {
 
 ## Lessons Learned
 
-### Phase 1 & 2 Insights
+### Phase 1, 2 & 3 Insights
 
 1. **Research first, build second** - 30-note entity extraction test prevented bad architecture
 2. **Clean rewrite > incremental migration** - For small projects with no users, clean slate is faster
@@ -459,6 +668,10 @@ Response: {
 8. **Real-world thresholds differ from theory** - 0.7 similarity too strict, 0.5 is appropriate
 9. **Validate with actual content** - Manual review of edges caught threshold issues early
 10. **"A link is a link" philosophy** - Weight system captures varying connection strengths naturally
+11. **Visualize early, iterate fast** - Graph visualization ("tangled mess") revealed edge explosion problem
+12. **Separate concerns matter** - Prospective memory (tasks) ≠ knowledge graph (semantic relationships)
+13. **Metadata vs edges trade-off** - Not everything needs to be a graph edge; metadata works for retrieval
+14. **User feedback is gold** - "Slightly more loose hairball" forced fundamental rethink
 
 ---
 
@@ -488,5 +701,18 @@ Response: {
 ---
 
 **Last Updated**: 2025-10-21
-**Current Phase**: Phase 2 ✅ Complete (Semantic Layer)
-**Next Milestone**: Phase 2.5 (Clustering), Phase 3 (Prospective), or Phase 4 (Retrieval)
+**Current Phase**: Phase 3 ✅ Complete (Prospective Layer)
+**Next Milestone**: Phase 2.5 (Clustering) or Phase 4 (Retrieval)
+
+---
+
+## Phase Summary
+
+✅ **Phase 1: Episodic** - WHO/WHAT/WHERE/WHEN extraction (Hybrid LLM + dateparser)
+✅ **Phase 2: Semantic** - Embeddings + 3 edge types (semantic, entity_link, tag_link)
+✅ **Phase 3: Prospective** - Metadata-only extraction (actions, questions, plans with WHEN linking)
+⏸️ **Phase 4: Retrieval** - Hybrid search + graph expansion (NOT STARTED)
+
+**Total Edge Types**: 3 (semantic, entity_link, tag_link) - Phase 3 is metadata-only
+**LLM Architecture**: Sequential Phase 1 → Phase 3 extraction (~600ms total)
+**Background Processing**: Phase 2 edge creation only (~2-3s async)

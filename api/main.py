@@ -3,8 +3,8 @@ GraphRAG Note Assistant API - Clean Rewrite
 
 Architecture:
 - Phase 1: Episodic Layer (WHO/WHAT/WHEN/WHERE extraction) ✅
-- Phase 2: Semantic Layer (embeddings + auto-linking) 🔄 IN PROGRESS
-- Phase 3: Prospective Layer (time-based edges) - TODO
+- Phase 2: Semantic Layer (embeddings + auto-linking) ✅
+- Phase 3: Prospective Layer (metadata-only, no edges) ✅
 - Phase 4: Retrieval Layer (hybrid search) - TODO
 """
 from contextlib import asynccontextmanager
@@ -13,10 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 from datetime import datetime
+import asyncio
 
 from .llm import initialize_llm, shutdown_llm
 from .models import ClassifyRequest, CaptureNoteResponse, EpisodicMetadata, TimeReference
 from .services.episodic import extract_episodic_metadata
+from .services.prospective import extract_prospective_items
 from .db.graph import store_graph_node, get_graph_node
 from .notes import write_markdown
 from .db import ensure_db
@@ -61,15 +63,15 @@ async def health():
 
 @app.post("/capture_note", response_model=CaptureNoteResponse)
 async def capture_note(req: ClassifyRequest, background_tasks: BackgroundTasks):
-    """Capture note with GraphRAG episodic metadata extraction.
+    """Capture note with GraphRAG episodic + prospective metadata extraction.
 
     Flow:
-    1. Extract episodic metadata (WHO/WHAT/WHEN/WHERE/tags/title) via LLM + dateparser
-    2. Save markdown file with title and tags
-    3. Store graph node with episodic metadata
-    4. Commit transaction & return response immediately
-    5. [Phase 2] Background: Generate embedding, create semantic/entity/tag edges
-    6. [Phase 3 TODO] Create prospective edges for time references
+    1. Extract episodic metadata (Phase 1)
+    2. Extract prospective items AFTER episodic (Phase 3 - needs WHEN data)
+    3. Save markdown file with title and tags
+    4. Store graph node with episodic + prospective metadata (JSON only, no edges)
+    5. Commit transaction & return response immediately
+    6. [Phase 2 only] Background: Generate embedding, create semantic/entity/tag edges
 
     Returns:
         CaptureNoteResponse with note_id, title, episodic metadata, and path
@@ -77,9 +79,18 @@ async def capture_note(req: ClassifyRequest, background_tasks: BackgroundTasks):
     con = get_db_connection()
 
     try:
-        # Phase 1: Extract episodic metadata (WHO/WHAT/WHEN/WHERE/tags/title)
+        # Phase 1: Extract episodic metadata
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M PST')
         episodic_data = await extract_episodic_metadata(req.text, current_date)
+
+        # Phase 3: Extract prospective items (SEQUENTIAL - needs WHEN data from Phase 1)
+        prospective_data = await extract_prospective_items(
+            text=req.text,
+            when_data=episodic_data['when']
+        )
+
+        # Store prospective data in episodic metadata
+        episodic_data['prospective'] = prospective_data
 
         # Save markdown file (title + tags + body)
         note_id, filepath, title = write_markdown(
@@ -111,6 +122,7 @@ async def capture_note(req: ClassifyRequest, background_tasks: BackgroundTasks):
         )
 
         # Phase 2: Background tasks (don't block response)
+        # Note: Phase 3 prospective is metadata-only, no edges created
         background_tasks.add_task(process_semantic_and_linking, note_id)
 
         return CaptureNoteResponse(
@@ -159,14 +171,175 @@ async def capture_note(req: ClassifyRequest, background_tasks: BackgroundTasks):
         con.close()
 
 
+# ==============================================================================
+# Graph Visualization Endpoints (Phase 2 - for frontend)
+# ==============================================================================
+
+@app.get("/graph/nodes")
+async def get_graph_nodes():
+    """Get all graph nodes for visualization
+
+    Returns list of nodes with episodic metadata for graph rendering
+    """
+    from .db.graph import get_all_nodes
+
+    nodes = get_all_nodes()
+
+    return {
+        "nodes": nodes,
+        "count": len(nodes)
+    }
+
+
+@app.get("/graph/edges")
+async def get_graph_edges(relation: str = None):
+    """Get all graph edges for visualization
+
+    Args:
+        relation: Optional filter by edge type (semantic, entity_link, tag_link)
+
+    Returns list of edges with src, dst, relation, weight, metadata
+    """
+    con = get_db_connection()
+
+    try:
+        if relation:
+            query = """
+                SELECT src_node_id, dst_node_id, relation, weight, metadata
+                FROM graph_edges
+                WHERE relation = ?
+                ORDER BY weight DESC
+            """
+            rows = con.execute(query, (relation,)).fetchall()
+        else:
+            query = """
+                SELECT src_node_id, dst_node_id, relation, weight, metadata
+                FROM graph_edges
+                ORDER BY relation, weight DESC
+            """
+            rows = con.execute(query).fetchall()
+
+        edges = []
+        for src, dst, rel, weight, metadata in rows:
+            import json
+            edges.append({
+                "source": src,  # D3.js/vis.js convention
+                "target": dst,
+                "relation": rel,
+                "weight": weight,
+                "metadata": json.loads(metadata) if metadata else None
+            })
+
+        return {
+            "edges": edges,
+            "count": len(edges)
+        }
+    finally:
+        con.close()
+
+
+@app.get("/graph/node/{note_id}")
+async def get_node_detail(note_id: str):
+    """Get detailed node information including connected edges
+
+    Useful for node click/hover in graph visualization
+    """
+    from .db.graph import get_graph_node, get_node_edges
+
+    node = get_graph_node(note_id)
+    if not node:
+        return {"error": "Node not found"}, 404
+
+    edges = get_node_edges(note_id)
+
+    return {
+        "node": node,
+        "edges": edges,
+        "edge_count": len(edges)
+    }
+
+
+@app.get("/graph/stats")
+async def get_graph_stats():
+    """Get graph statistics for visualization summary
+
+    Returns counts by edge type, node count, clustering info
+    """
+    con = get_db_connection()
+
+    try:
+        # Node count
+        node_count = con.execute("SELECT COUNT(*) FROM graph_nodes").fetchone()[0]
+
+        # Nodes with embeddings
+        embedded_count = con.execute(
+            "SELECT COUNT(*) FROM graph_nodes WHERE embedding IS NOT NULL"
+        ).fetchone()[0]
+
+        # Edge counts by type
+        edge_stats = con.execute("""
+            SELECT relation, COUNT(*) as count, AVG(weight) as avg_weight
+            FROM graph_edges
+            GROUP BY relation
+        """).fetchall()
+
+        edges_by_type = {}
+        total_edges = 0
+        for relation, count, avg_weight in edge_stats:
+            edges_by_type[relation] = {
+                "count": count,
+                "avg_weight": float(avg_weight) if avg_weight else 0
+            }
+            total_edges += count
+
+        return {
+            "nodes": {
+                "total": node_count,
+                "with_embeddings": embedded_count
+            },
+            "edges": {
+                "total": total_edges,
+                "by_type": edges_by_type
+            }
+        }
+    finally:
+        con.close()
+
+
+@app.get("/notes/{note_id}/content")
+async def get_note_content(note_id: str):
+    """Get markdown content for a note
+
+    Used by frontend to display full note text on click
+    """
+    node = get_graph_node(note_id)
+    if not node:
+        return {"error": "Note not found"}, 404
+
+    try:
+        with open(node['file_path'], 'r', encoding='utf-8') as f:
+            content = f.read()
+        return {
+            "note_id": note_id,
+            "content": content,
+            "file_path": node['file_path']
+        }
+    except FileNotFoundError:
+        return {"error": "File not found"}, 404
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+
 def process_semantic_and_linking(note_id: str):
     """Process embedding generation and linking (runs after response sent)
 
-    Phase 2 background tasks:
+    Phase 2 background tasks only:
     1. Generate & store embedding
     2. Create semantic edges (similarity-based)
     3. Create entity links (WHO/WHAT/WHERE)
     4. Create tag links (Jaccard similarity)
+
+    Note: Phase 3 prospective is metadata-only (no edges created)
 
     Args:
         note_id: Note ID to process
@@ -177,8 +350,9 @@ def process_semantic_and_linking(note_id: str):
     con = get_db_connection()
 
     try:
-        print(f"[Background] Processing semantic links for {note_id}")
+        print(f"[Background] Processing edges for {note_id}")
 
+        # Phase 2: Semantic layer
         # 1. Generate & store embedding
         node = get_graph_node(note_id)
         if node:
@@ -202,7 +376,7 @@ def process_semantic_and_linking(note_id: str):
         print(f"[Background] ✅ Tag links created for {note_id}")
 
         con.commit()
-        print(f"[Background] 🎉 Completed processing for {note_id}")
+        print(f"[Background] 🎉 Completed all edge processing for {note_id}")
 
     except Exception as e:
         con.rollback()

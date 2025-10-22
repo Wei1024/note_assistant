@@ -1,0 +1,105 @@
+================================================================================
+Phase 3: Prospective Memory - Simplified Benchmark Test Report
+================================================================================
+
+Test Date: 2025-10-21 17:13:26
+Total Test Cases: 30
+
+--------------------------------------------------------------------------------
+Metrics Summary
+--------------------------------------------------------------------------------
+
+Contains Detection Accuracy:  0.833
+  True Positives:   16
+  False Positives:  3
+  False Negatives:  2
+
+Item Count Accuracy:          0.767
+Timedata Linking Accuracy:    0.615
+
+--------------------------------------------------------------------------------
+Sample Results (First 10)
+--------------------------------------------------------------------------------
+
+Note 1: Met with Sarah today about FAISS implementation. Need to res...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 1
+  Extracted Items: 1
+  Extracted:
+    - Research vector search alternatives for FAISS implementation (timedata: 2025-10-17T00:00:00)
+
+Note 2: Had lunch with Tom at Café Awesome. Great conversation about...
+  Expected Contains: False
+  Extracted Contains: True
+  Expected Items: 0
+  Extracted Items: 3
+  Extracted:
+    - Explore potential AI startup opportunities or partnerships based on the conversation with Tom. (timedata: None)
+    - Discuss next steps for AI startup evaluation or investment strategy with Tom. (timedata: None)
+    - Identify key questions to ask in future discussions about AI startups. (timedata: None)
+
+Note 3: TODO: Call Mom tomorrow at 2pm. Also need to review the prop...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 2
+  Extracted Items: 2
+  Extracted:
+    - Call Mom to discuss the proposal she sent (timedata: 2025-10-22T14:00:00)
+    - Review the proposal sent by Mom (timedata: None)
+
+Note 4: Doctor appointment next Tuesday at 10am for annual checkup...
+  Expected Contains: False
+  Extracted Contains: True
+  Expected Items: 0
+  Extracted Items: 2
+  Extracted:
+    - Prepare for the doctor appointment by gathering medical records or a list of health concerns to discuss. (timedata: 2025-10-21T10:00:00)
+    - Review the doctor's recommendations for any upcoming health screenings or preventive care measures. (timedata: 2025-10-21T10:00:00)
+
+Note 5: Finished the authentication refactor. Tests are passing. Rea...
+  Expected Contains: False
+  Extracted Contains: False
+  Expected Items: 0
+  Extracted Items: 0
+
+Note 6: Should I use Redis or Memcached for caching? Need to benchma...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 1
+  Extracted Items: 1
+  Extracted:
+    - Benchmark the performance of Redis versus Memcached for caching (timedata: None)
+
+Note 7: Planning to add bulk export feature, API rate limiting, and ...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 1
+  Extracted Items: 3
+  Extracted:
+    - Evaluate requirements and design for the bulk export feature (timedata: 2025-06-30T00:00:00)
+    - Assess API rate limiting strategy and define limits based on usage patterns (timedata: 2025-06-30T00:00:00)
+    - Determine webhook implementation approach and security considerations (timedata: 2025-06-30T00:00:00)
+
+Note 8: Meeting notes: Discussed OAuth2 implementation with Alex. Ac...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 1
+  Extracted Items: 1
+  Extracted:
+    - Implement OAuth2 authentication as discussed with Alex (timedata: 2025-10-17T00:00:00)
+
+Note 9: The hippocampus replays experiences during sleep to strength...
+  Expected Contains: False
+  Extracted Contains: False
+  Expected Items: 0
+  Extracted Items: 0
+
+Note 10: How does PostgreSQL's EXPLAIN ANALYZE work? Should learn mor...
+  Expected Contains: True
+  Extracted Contains: True
+  Expected Items: 1
+  Extracted Items: 1
+  Extracted:
+    - Learn more about PostgreSQL's query optimization using EXPLAIN ANALYZE (timedata: None)
+
