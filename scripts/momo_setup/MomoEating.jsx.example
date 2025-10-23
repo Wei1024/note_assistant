@@ -1,0 +1,98 @@
+import { useState, useEffect } from 'react';
+import momoDefault from './momo_default.svg';
+import momoMouthOpen from './momo_mouth_open.svg';
+import momoHappy from './momo_happy.svg';
+import momoMidChew from './momo_mouth_mid-chew.svg';
+import momoChewing from './momo_chewing.svg';
+
+/**
+ * Momo Dream Eater Animation Component
+ *
+ * Shows Momo chewing animation when backend is processing notes.
+ * Uses smooth crossfade transitions between 5 frames for fluid motion.
+ *
+ * @param {boolean} isProcessing - Whether the backend is currently processing
+ * @param {number} size - Size of Momo in pixels (default: 100)
+ */
+const MomoEating = ({ isProcessing = false, size = 100 }) => {
+  const [frame, setFrame] = useState(0);
+
+  // Animation sequence: closed → slightly open → fully open → mid-chew → chewing → loop
+  const frames = [
+    momoDefault,      // 0: Mouth closed (resting)
+    momoMouthOpen,    // 1: Mouth slightly open
+    momoHappy,        // 2: Mouth fully open (happy/waiting)
+    momoMidChew,      // 3: Mid-chew position
+    momoChewing,      // 4: Full chew
+  ];
+
+  useEffect(() => {
+    // Reset to default when not processing
+    if (!isProcessing) {
+      setFrame(0);
+      return;
+    }
+
+    // Cycle through frames when processing
+    const interval = setInterval(() => {
+      setFrame(currentFrame => (currentFrame + 1) % frames.length);
+    }, 350); // 350ms per frame = ~3 chews per second
+
+    return () => clearInterval(interval);
+  }, [isProcessing, frames.length]);
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: size,
+        height: size,
+        display: 'inline-block'
+      }}
+      aria-label={isProcessing ? "Momo is eating your note" : "Momo is resting"}
+    >
+      {frames.map((src, i) => (
+        <img
+          key={i}
+          src={src}
+          alt={`Momo frame ${i + 1}`}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            opacity: i === frame ? 1 : 0,
+            transition: 'opacity 0.25s ease-in-out', // Smooth crossfade
+            pointerEvents: 'none', // Prevent image drag
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default MomoEating;
+
+/**
+ * USAGE EXAMPLE:
+ *
+ * import MomoEating from './MomoEating';
+ *
+ * function NoteCapture() {
+ *   const [isProcessing, setIsProcessing] = useState(false);
+ *
+ *   const handleSubmitNote = async (note) => {
+ *     setIsProcessing(true);
+ *     await captureNote(note); // Your API call
+ *     setIsProcessing(false);
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <MomoEating isProcessing={isProcessing} size={120} />
+ *       <p>{isProcessing ? "Momo is eating your note..." : "Ready for notes!"}</p>
+ *     </div>
+ *   );
+ * }
+ */

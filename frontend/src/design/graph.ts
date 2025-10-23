@@ -16,10 +16,10 @@ export const graph = {
 
     // Size multipliers based on connection count
     sizeScale: {
-      isolated: 0.75,      // No connections
-      small: 1.0,          // 1-3 connections
-      medium: 1.25,        // 4-7 connections
-      large: 1.5,          // 8+ connections
+      isolated: 0.75 as const,      // No connections
+      small: 1.0 as const,          // 1-3 connections
+      medium: 1.25 as const,        // 4-7 connections
+      large: 1.5 as const,          // 8+ connections
     },
 
     // Stroke width for node borders
@@ -118,7 +118,7 @@ export type GraphToken = typeof graph
  * Get node radius based on connection count
  */
 export function getNodeRadius(connectionCount: number): number {
-  let scale = graph.node.sizeScale.small
+  let scale: number = graph.node.sizeScale.small
 
   if (connectionCount === 0) {
     scale = graph.node.sizeScale.isolated

@@ -18,8 +18,8 @@ const iconSize = computed(() => {
   return typeof props.size === 'number' ? props.size : iconSizes[props.size]
 })
 
-// Dynamic SVG import path
-const iconPath = computed(() => `/src/assets/icons/${props.name}.svg`)
+// Dynamic SVG import path (not currently used - placeholder SVG rendered instead)
+// const iconPath = computed(() => `/src/assets/icons/${props.name}.svg`)
 </script>
 
 <template>

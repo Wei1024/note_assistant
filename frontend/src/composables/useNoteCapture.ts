@@ -15,6 +15,7 @@ export function useNoteCapture() {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const result = ref<CaptureNoteResponse | null>(null)
+  const pollingIntervals = ref<number[]>([])
 
   /**
    * Capture note with GraphRAG episodic + prospective extraction
@@ -88,7 +89,7 @@ export function useNoteCapture() {
     const maxAttempts = 10
     let attempts = 0
 
-    const checkInterval = setInterval(async () => {
+    const checkInterval = window.setInterval(async () => {
       attempts++
 
       try {
@@ -96,6 +97,9 @@ export function useNoteCapture() {
         if (attempts >= 3) {
           // ~6 seconds elapsed
           clearInterval(checkInterval)
+          // Remove from tracking
+          const index = pollingIntervals.value.indexOf(checkInterval)
+          if (index > -1) pollingIntervals.value.splice(index, 1)
           callback(noteId, title)
         }
       } catch (e) {
@@ -105,8 +109,13 @@ export function useNoteCapture() {
       // Stop after max attempts
       if (attempts >= maxAttempts) {
         clearInterval(checkInterval)
+        const index = pollingIntervals.value.indexOf(checkInterval)
+        if (index > -1) pollingIntervals.value.splice(index, 1)
       }
     }, 2000)
+
+    // Track this interval for cleanup
+    pollingIntervals.value.push(checkInterval)
   }
 
   /**
@@ -132,6 +141,15 @@ export function useNoteCapture() {
     result.value = null
   }
 
+  /**
+   * Cleanup all polling intervals
+   * Call this when component unmounts
+   */
+  const cleanup = () => {
+    pollingIntervals.value.forEach(id => clearInterval(id))
+    pollingIntervals.value = []
+  }
+
   return {
     // State
     isLoading,
@@ -143,5 +161,6 @@ export function useNoteCapture() {
     clearError,
     clearResult,
     reset,
+    cleanup,
   }
 }

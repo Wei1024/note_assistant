@@ -4,7 +4,7 @@
  * Updated to use GraphRAG backend with episodic metadata (WHO/WHAT/WHERE/WHEN/tags)
  */
 import { ref, computed } from 'vue'
-import type { GraphData, GraphNode, GraphEdge } from '@/types/api'
+import type { GraphData, GraphNode } from '@/types/api'
 
 export function useKnowledgeGraph() {
   const graphData = ref<GraphData | null>(null)
