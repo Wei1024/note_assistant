@@ -1,23 +1,22 @@
 # User Tag System - Implementation Plan
 
 **Last Updated:** 2025-10-22
-**Status:** Phase 1-2 Complete ✅ | Phase 3 In Progress 🚧
+**Status:** Phase 1-3 Complete ✅
 
 ## Progress Summary
 
 ✅ **Completed:**
 - Phase 1: Backend infrastructure (schema, repository, hashtag extraction)
 - Phase 2: API endpoints (tag search, autocomplete)
+- Phase 3: Frontend autocomplete component (full inline hashtag autocomplete)
 - Migration script and documentation
+- Frontend API integration (updated to use /capture_note endpoint)
 - Test data with 11 manually tagged notes
 - 3 meaningful tag edges created (vs 183 noisy LLM edges before)
 
-🚧 **Current:**
-- Phase 3: Frontend autocomplete component
-
 ⏳ **Next:**
-- Tag input UI in note editor
 - Tag management dashboard (optional)
+- Batch tagging operations (Phase 4+)
 
 ---
 
@@ -282,19 +281,30 @@ Response: {
 
 ---
 
-## Phase 3: Frontend 🚧
+## Phase 3: Frontend ✅
 
-**Current Editor:** `frontend/src/views/CaptureView.vue` (simple `<textarea>`)
+**Current Editor:** `frontend/src/views/CaptureView.vue` (textarea with autocomplete)
 
-### 3.1 Tag Autocomplete Component (IN PROGRESS)
+### 3.1 Tag Autocomplete Component ✅ COMPLETE
 
-**Next Steps:**
-1. Create `TagAutocomplete.vue` component
-2. Detect `#` keystroke in textarea
-3. Extract query after `#` (e.g., `#pro` → query="pro")
-4. Call `GET /tags/search?q=pro`
-5. Show dropdown below cursor
-6. Insert selected tag on click/enter
+**File:** `frontend/src/components/TagAutocomplete.vue`
+
+**Features Implemented:**
+1. ✅ Debounced API search (300ms delay)
+2. ✅ Real-time hashtag detection in textarea
+3. ✅ Accurate cursor position calculation (mirror div technique)
+4. ✅ Dropdown positioned below cursor
+5. ✅ Keyboard navigation (↑↓ arrows, Enter, Escape)
+6. ✅ Visual hierarchy (indented child tags)
+7. ✅ Use count badges
+8. ✅ Loading and empty states
+9. ✅ Smooth fade animations
+
+**Integration:** `frontend/src/views/CaptureView.vue`
+- Detects `#` keystroke with regex `/#([a-zA-Z0-9_/-]*)$/`
+- Shows dropdown at cursor position
+- Inserts selected tag with automatic spacing
+- Cursor repositions after insertion
 
 ### 3.2 Tag Input Component (PLANNED)
 
@@ -595,17 +605,22 @@ def test_merge_tags():
 - [x] Tag repository with all CRUD operations
 - [x] Batch-compatible design (UUID-based)
 
-### Phase 2 (API) ⏳
-- [ ] All tag management endpoints implemented
-- [ ] Note-tag relationship endpoints working
-- [ ] Autocomplete endpoint returns fuzzy matches
-- [ ] Tag suggestions from similar notes
+### Phase 2 (API) ✅
+- [x] Core tag search endpoint implemented (`/tags/search`)
+- [x] Fuzzy matching with priority (exact → prefix → contains)
+- [x] Sorted by use_count
+- [x] Note-tag relationships working via TagRepository
+- [ ] Full CRUD endpoints (optional - create/rename/merge/delete)
+- [ ] Tag suggestions from similar notes (future enhancement)
 
-### Phase 3 (Frontend) ⏳
-- [ ] Inline hashtag detection in markdown editor
-- [ ] Autocomplete dropdown with hierarchy
-- [ ] Tag management dashboard (view, merge, rename)
-- [ ] Graph view tag filtering
+### Phase 3 (Frontend) ✅
+- [x] Inline hashtag detection in markdown editor
+- [x] Autocomplete dropdown with hierarchy
+- [x] Keyboard navigation (arrows, enter, escape)
+- [x] Cursor position calculation and tag insertion
+- [x] Frontend API integration (updated to /capture_note)
+- [ ] Tag management dashboard (view, merge, rename) - optional
+- [ ] Graph view tag filtering (already exists via relation filter)
 
 ### Phase 4 (Migration) ⏳
 - [ ] Migration script clears old tags

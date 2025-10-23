@@ -31,13 +31,13 @@ A FastAPI-based backend for a multi-dimensional note-taking system with LLM-powe
 ```bash
 cd /path/to/note_assistant
 source .venv/bin/activate
-python -m uvicorn api.main:app --host 0.0.0.0 --port 8734
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Health Check
 
 ```bash
-curl http://localhost:8734/health
+curl http://localhost:8000/health
 # Response: {"status": "ok", "model": "qwen3:4b-instruct"}
 ```
 

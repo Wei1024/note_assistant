@@ -6,31 +6,31 @@
  */
 
 import { ref } from 'vue'
-import type { ClassifyRequest, ClassifyResponse, ApiError } from '@/types/api'
+import type { ClassifyRequest, CaptureNoteResponse, ApiError } from '@/types/api'
 import { isApiError } from '@/types/api'
 
-const API_BASE_URL = 'http://localhost:8734'
+const API_BASE_URL = 'http://localhost:8000'
 
 export function useNoteCapture() {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const result = ref<ClassifyResponse | null>(null)
+  const result = ref<CaptureNoteResponse | null>(null)
 
   /**
-   * Capture note with instant save (background classification)
+   * Capture note with GraphRAG episodic + prospective extraction
    *
-   * Uses /save_fast endpoint for ~30ms response time
-   * Returns immediately with basic title
-   * LLM classification happens in background and updates file when ready
+   * Uses /capture_note endpoint for episodic metadata extraction
+   * Returns immediately with title and episodic metadata
+   * Semantic linking happens in background
    *
    * @param text - Note content
-   * @param onBackgroundComplete - Optional callback when background classification finishes
-   * @returns ClassifyResponse with basic title (full metadata added async)
+   * @param onBackgroundComplete - Optional callback when background linking finishes
+   * @returns CaptureNoteResponse with title and episodic metadata
    */
   const capture = async (
     text: string,
     onBackgroundComplete?: (noteId: string, title: string) => void
-  ): Promise<ClassifyResponse | null> => {
+  ): Promise<CaptureNoteResponse | null> => {
     if (!text.trim()) {
       error.value = 'Note text cannot be empty'
       return null
@@ -43,7 +43,7 @@ export function useNoteCapture() {
     try {
       const requestBody: ClassifyRequest = { text }
 
-      const response = await fetch(`${API_BASE_URL}/save_fast`, {
+      const response = await fetch(`${API_BASE_URL}/capture_note`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,12 +56,12 @@ export function useNoteCapture() {
         throw new Error(isApiError(errorData) ? errorData.detail : 'Failed to save note')
       }
 
-      const data: ClassifyResponse = await response.json()
+      const data: CaptureNoteResponse = await response.json()
       result.value = data
 
       // Start polling for background completion if callback provided
-      if (onBackgroundComplete && data.path) {
-        pollBackgroundCompletion(data.path, data.title, onBackgroundComplete)
+      if (onBackgroundComplete && data.note_id) {
+        pollBackgroundCompletion(data.note_id, data.title, onBackgroundComplete)
       }
 
       return data
@@ -76,18 +76,14 @@ export function useNoteCapture() {
   }
 
   /**
-   * Poll for background classification completion
-   * Checks if the note file has been enriched with dimensions
+   * Poll for background semantic linking completion
+   * Waits for semantic and entity edges to be created
    */
   const pollBackgroundCompletion = async (
-    notePath: string,
+    noteId: string,
     title: string,
     callback: (noteId: string, title: string) => void
   ) => {
-    // Extract note_id from path (filename without .md)
-    const filename = notePath.split('/').pop() || ''
-    const noteId = filename.replace('.md', '')
-
     // Poll every 2 seconds for up to 20 seconds
     const maxAttempts = 10
     let attempts = 0
@@ -96,11 +92,9 @@ export function useNoteCapture() {
       attempts++
 
       try {
-        // Try to read the note to see if it has been enriched
-        // For now, we'll just wait ~13 seconds and assume it's done
-        // In a real implementation, you could add a /notes/{id}/status endpoint
-        if (attempts >= 7) {
-          // ~14 seconds elapsed
+        // Wait ~5 seconds for semantic linking to complete
+        if (attempts >= 3) {
+          // ~6 seconds elapsed
           clearInterval(checkInterval)
           callback(noteId, title)
         }

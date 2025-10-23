@@ -21,12 +21,22 @@ export interface Dimensions {
 }
 
 /**
- * Response from /classify_and_save endpoint
+ * Response from /classify_and_save endpoint (legacy)
  */
 export interface ClassifyResponse {
   title: string
   dimensions: Dimensions
   tags: string[]
+  path: string
+}
+
+/**
+ * Response from /capture_note endpoint (GraphRAG)
+ */
+export interface CaptureNoteResponse {
+  note_id: string
+  title: string
+  episodic: EpisodicMetadata
   path: string
 }
 
