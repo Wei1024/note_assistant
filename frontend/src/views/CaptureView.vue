@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useNoteCapture } from '@/composables/useNoteCapture'
 import { useToast } from '@/composables/useToast'
 import Button from '@/components/shared/Button.vue'
+import TagAutocomplete from '@/components/TagAutocomplete.vue'
 import { colors } from '@/design/colors'
 import { typography } from '@/design/typography'
 import { spacing, borderRadius } from '@/design/spacing'
@@ -10,6 +11,14 @@ import { spacing, borderRadius } from '@/design/spacing'
 const noteText = ref('')
 const { isLoading, error, capture } = useNoteCapture()
 const { success, info } = useToast()
+
+// Textarea ref for direct manipulation
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+
+// Autocomplete state
+const showAutocomplete = ref(false)
+const autocompleteQuery = ref('')
+const autocompletePosition = ref({ top: 0, left: 0 })
 
 const handleSave = async () => {
   const text = noteText.value
@@ -40,6 +49,108 @@ const handleKeydown = (event: KeyboardEvent) => {
     handleSave()
   }
 }
+
+// Handle input to detect hashtag autocomplete
+const handleInput = (event: Event) => {
+  const textarea = event.target as HTMLTextAreaElement
+  const text = textarea.value
+  const cursorPos = textarea.selectionStart
+
+  // Find if we're after a # character
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const hashMatch = textBeforeCursor.match(/#([a-zA-Z0-9_/-]*)$/)
+
+  if (hashMatch) {
+    // User is typing a hashtag
+    showAutocomplete.value = true
+    autocompleteQuery.value = hashMatch[1] // Text after #
+
+    // Calculate position
+    autocompletePosition.value = calculateCursorPosition(textarea)
+  } else {
+    showAutocomplete.value = false
+  }
+}
+
+// Calculate cursor position for autocomplete dropdown
+function calculateCursorPosition(textarea: HTMLTextAreaElement) {
+  // Create invisible mirror div to measure cursor position
+  const div = document.createElement('div')
+  const computed = window.getComputedStyle(textarea)
+
+  // Copy styles
+  const stylesToCopy = [
+    'fontSize', 'fontFamily', 'fontWeight', 'fontStyle',
+    'letterSpacing', 'textTransform', 'wordSpacing',
+    'textIndent', 'whiteSpace', 'lineHeight',
+    'padding', 'border', 'boxSizing'
+  ]
+
+  stylesToCopy.forEach(style => {
+    div.style[style as any] = computed[style as any]
+  })
+
+  div.style.position = 'absolute'
+  div.style.visibility = 'hidden'
+  div.style.whiteSpace = 'pre-wrap'
+  div.style.wordWrap = 'break-word'
+  div.style.width = textarea.offsetWidth + 'px'
+
+  // Copy text up to cursor
+  const textBeforeCursor = textarea.value.substring(0, textarea.selectionStart)
+  div.textContent = textBeforeCursor
+
+  // Add to DOM, measure, remove
+  document.body.appendChild(div)
+  const rect = textarea.getBoundingClientRect()
+
+  // Get scroll position
+  const scrollTop = textarea.scrollTop
+  const scrollLeft = textarea.scrollLeft
+
+  // Calculate position
+  const divHeight = div.offsetHeight
+  const divWidth = div.offsetWidth
+
+  document.body.removeChild(div)
+
+  return {
+    top: rect.top + divHeight - scrollTop + 5,  // 5px below cursor
+    left: rect.left + divWidth - scrollLeft
+  }
+}
+
+// Handle tag selection from autocomplete
+function handleTagSelect(tagName: string) {
+  if (!textareaRef.value) return
+
+  const textarea = textareaRef.value
+  const text = textarea.value
+  const cursorPos = textarea.selectionStart
+
+  // Find the # that started this
+  const textBeforeCursor = text.substring(0, cursorPos)
+  const hashMatch = textBeforeCursor.match(/#([a-zA-Z0-9_/-]*)$/)
+
+  if (hashMatch) {
+    const hashStart = cursorPos - hashMatch[1].length - 1  // -1 for #
+    const before = text.substring(0, hashStart)
+    const after = text.substring(cursorPos)
+
+    // Replace with selected tag
+    noteText.value = before + '#' + tagName + ' ' + after
+
+    // Move cursor after inserted tag
+    const newCursorPos = hashStart + tagName.length + 2  // +2 for # and space
+    nextTick(() => {
+      textarea.selectionStart = newCursorPos
+      textarea.selectionEnd = newCursorPos
+      textarea.focus()
+    })
+  }
+
+  showAutocomplete.value = false
+}
 </script>
 
 <template>
@@ -56,14 +167,26 @@ const handleKeydown = (event: KeyboardEvent) => {
     <div class="capture-view__content">
       <!-- Textarea - never disabled, always ready -->
       <textarea
+        ref="textareaRef"
         v-model="noteText"
         placeholder="Type your note here... Meeting notes, ideas, tasks, or anything else on your mind.
 
-Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to save quickly."
+Tip: Press Cmd+Enter (Mac) or Ctrl+Enter (Windows) to save quickly.
+Use #tags for organization (e.g., #project/alpha, #health/fitness)"
         class="capture-textarea"
         :style="textareaStyle as any"
+        @input="handleInput"
         @keydown="handleKeydown"
         autofocus
+      />
+
+      <!-- Tag Autocomplete Dropdown -->
+      <TagAutocomplete
+        v-if="showAutocomplete"
+        :query="autocompleteQuery"
+        :position="autocompletePosition"
+        @select="handleTagSelect"
+        @close="showAutocomplete = false"
       />
 
       <!-- Action button -->
