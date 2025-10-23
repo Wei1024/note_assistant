@@ -23,6 +23,7 @@ from .db.graph import store_graph_node, get_graph_node
 from .notes import write_markdown
 from .db import ensure_db
 from .config import BACKEND_HOST, BACKEND_PORT, LLM_MODEL, get_db_connection
+from .routes import tags
 
 
 @asynccontextmanager
@@ -53,6 +54,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(tags.router)
 
 
 @app.get("/health")
