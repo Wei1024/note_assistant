@@ -7,7 +7,7 @@ Links on:
 - WHO: People, organizations
 - WHAT: Concepts, topics, entities
 - WHERE: Locations (physical/virtual/contextual)
-- TAGS: Thematic categories
+- TAGS: User-created hashtags (from tags/note_tags tables)
 
 Philosophy: "A link is a link" - create edges for ANY shared entity/tag,
 but weight by strength (1 shared = weak, 5 shared = strong).
@@ -15,6 +15,7 @@ but weight by strength (1 shared = weak, 5 shared = strong).
 import json
 from typing import List, Dict, Any, Set, Tuple, Optional
 from ..db.graph import create_edge, get_all_nodes, get_graph_node
+from ..repositories.tag_repository import TagRepository
 
 
 def normalize_entity(entity: str) -> str:
@@ -212,23 +213,22 @@ def create_entity_link_edge(
 
 
 def create_tag_links(note_id: str, db_connection):
-    """Create tag_link edges for notes sharing tags
+    """Create tag_link edges for notes sharing user tags
 
+    Uses new tag system (tags/note_tags tables, not graph_nodes.tags JSON)
     Weight = Jaccard similarity (0.0 to 1.0)
-    Only creates edge if similarity >= 0.3
+    Only creates edge if similarity >= 0.5
 
     Args:
         note_id: Note ID to create tag links for
         db_connection: SQLite connection
     """
-    # Get current note's tags
-    current_node = get_graph_node(note_id)
-    if not current_node:
-        return
-
-    current_tags = current_node.get('tags', [])
-    if not current_tags:
+    # Get current note's tags from new tag system
+    current_tag_objs = TagRepository.get_note_tags(note_id)
+    if not current_tag_objs:
         return  # No tags to link
+
+    current_tags = [tag['name'] for tag in current_tag_objs]
 
     # Get all other nodes
     all_nodes = get_all_nodes()
@@ -239,15 +239,19 @@ def create_tag_links(note_id: str, db_connection):
         if other_id == note_id:
             continue  # Skip self
 
-        other_tags = other_node.get('tags', [])
-        if not other_tags:
+        # Get other note's tags from new tag system
+        other_tag_objs = TagRepository.get_note_tags(other_id)
+        if not other_tag_objs:
             continue
+
+        other_tags = [tag['name'] for tag in other_tag_objs]
 
         # Calculate similarity
         similarity, shared_tags = calculate_tag_similarity(current_tags, other_tags)
 
-        # Threshold: only create edge if similarity >= 0.3
-        if similarity >= 0.3:
+        # Threshold: 0.4 for user tags (lowered from 0.5 since user tags are high-quality)
+        # User tags are intentional, so we can be more permissive than LLM tags
+        if similarity >= 0.4:
             # Normalize direction (lexicographically smaller ID first)
             src_id = min(note_id, other_id)
             dst_id = max(note_id, other_id)

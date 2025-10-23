@@ -34,7 +34,7 @@ async def extract_episodic_metadata(text: str, current_date: str = None) -> Dict
     - WHAT: Concepts, topics, entities (LLM)
     - WHERE: Locations - physical/virtual/contextual (LLM)
     - WHEN: Time references (dateparser)
-    - Tags: Broader thematic categories (LLM)
+    - Tags: User-created hashtags (extracted from text, no LLM)
 
     Args:
         text: Raw note content
@@ -46,102 +46,71 @@ async def extract_episodic_metadata(text: str, current_date: str = None) -> Dict
             "what": ["FAISS", "vector search"],
             "where": ["Café Awesome"],
             "when": [{"original": "tomorrow", "parsed": "2025-10-21T14:00:00", "type": "relative"}],
-            "tags": ["meeting", "ai-research"],
+            "tags": ["project/alpha", "sprint/planning"],  # Extracted from #hashtags
             "title": "Generated title"
         }
     """
     if current_date is None:
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M %Z')
 
-    # Step 1: Extract WHO/WHAT/WHERE/tags with LLM
-    entities_and_tags = await _extract_entities_and_tags_llm(text, current_date)
+    # Step 1: Extract WHO/WHAT/WHERE/title with LLM (episodic extraction)
+    entities = await _extract_entities_llm(text, current_date)
 
     # Step 2: Extract WHEN with dateparser (more accurate than LLM)
     time_references = _extract_time_references(text, current_date)
 
+    # Step 3: Extract user hashtags from text (no LLM - user-controlled)
+    tags = extract_hashtags_from_text(text)
+
     return {
-        "who": entities_and_tags.get("who", []),
-        "what": entities_and_tags.get("what", []),
-        "where": entities_and_tags.get("where", []),
+        "who": entities.get("who", []),
+        "what": entities.get("what", []),
+        "where": entities.get("where", []),
         "when": time_references,
-        "tags": entities_and_tags.get("tags", []),
-        "title": entities_and_tags.get("title", text.split("\n")[0][:60])
+        "tags": tags,
+        "title": entities.get("title", text.split("\n")[0][:60])
     }
 
 
-async def _extract_entities_and_tags_llm(text: str, current_date: str) -> Dict[str, Any]:
-    """Use LLM to extract WHO/WHAT/WHERE and tags.
+async def _extract_entities_llm(text: str, current_date: str) -> Dict[str, Any]:
+    """Extract WHO/WHAT/WHERE entities using LLM (optimized for small local models).
 
-    This is the optimal approach from our research:
-    - LLM excels at semantic understanding (WHO/WHAT/WHERE)
-    - Single call reduces latency
-    - Generates title and tags simultaneously
+    Separate from tag extraction for better focus and accuracy.
+    Avoids few-shot examples to prevent hallucination in small models.
     """
-    prompt = f"""Extract entities and metadata from this note.
+    prompt = f"""Extract people, topics, and locations from this note.
 
-TODAY'S DATE (for context): {current_date} (Pacific Time)
+TODAY'S DATE: {current_date} (Pacific Time)
 
-NOTE TEXT TO ANALYZE:
+NOTE TEXT:
 {text}
 
-EXTRACT THE FOLLOWING FROM THE NOTE TEXT:
+INSTRUCTIONS:
+1. WHO: Extract names of people and organizations mentioned in the note
+2. WHAT: Extract specific concepts, technologies, or topics mentioned
+3. WHERE: Extract physical places, virtual locations, or meeting contexts
+4. TITLE: Generate a short descriptive title (max 10 words)
 
-1. **WHO** (people/organizations):
-   - Extract proper names of people and organizations
-   - Include relationship terms like "Mom", "client", "PM"
-   - Normalize capitalization
-   - Output: List of strings
+RULES:
+- Only extract entities EXPLICITLY mentioned in the text
+- Use empty arrays if nothing found
+- Return valid JSON only
 
-2. **WHAT** (entities - specific concepts/topics/projects/tools):
-   - Extract concrete concepts, technologies, projects, topics
-   - Be specific: "Redis", "OAuth2", "vector search"
-   - Limit to 5-8 most important entities
-   - Output: List of strings
-
-3. **WHERE** (locations - physical/virtual/contextual):
-   - Physical places, virtual locations, meeting contexts
-   - Examples: "Café Awesome", "Zoom", "team meeting"
-   - Output: List of strings
-
-4. **TAGS** (broader thematic categories):
-   - High-level themes or categories
-   - Examples: "meeting", "security", "ai-research", "planning"
-   - 2-4 tags maximum
-   - Output: List of strings
-
-5. **TITLE**:
-   - Generate a concise, descriptive title (max 10 words)
-   - Capture the essence of the note
-   - Output: String
-
-**OUTPUT FORMAT** (JSON only, no explanation):
-
-```json
+OUTPUT FORMAT:
 {{
-  "who": ["<person_name>"],
-  "what": ["<concept_1>", "<concept_2>"],
-  "where": ["<location>"],
-  "tags": ["<theme_1>", "<theme_2>"],
-  "title": "<descriptive_title>"
+  "who": [],
+  "what": [],
+  "where": [],
+  "title": ""
 }}
-```
 
-**CRITICAL RULES**:
-- Extract ONLY entities EXPLICITLY MENTIONED in the note text
-- Do NOT copy these placeholder examples - use real entities from the note
-- Empty arrays are REQUIRED if nothing found
-- Distinguish entities (specific) from tags (thematic)
-- Examples of correct empty responses:
-  - If no people: {{"who": []}}
-  - If no locations: {{"where": []}}
-
-Return ONLY the JSON object with real entities from the note:"""
+Your JSON response:"""
 
     llm = get_llm()
 
     try:
         # Track LLM call for audit
-        with track_llm_call('episodic_extraction', prompt) as tracker:
+        with track_llm_call('entity_extraction', prompt) as tracker:
             response = await llm.ainvoke(prompt)
             tracker.set_response(response)
 
@@ -152,7 +121,6 @@ Return ONLY the JSON object with real entities from the note:"""
         result.setdefault("who", [])
         result.setdefault("what", [])
         result.setdefault("where", [])
-        result.setdefault("tags", [])
         result.setdefault("title", text.split("\n")[0][:60])
 
         return result
@@ -163,10 +131,56 @@ Return ONLY the JSON object with real entities from the note:"""
             "who": [],
             "what": [],
             "where": [],
-            "tags": [],
             "title": text.split("\n")[0][:60],
             "error": str(e)
         }
+
+
+def extract_hashtags_from_text(text: str) -> List[str]:
+    """Extract user hashtags from note text.
+
+    Supports:
+    - Flat tags: #personal, #urgent, #meeting
+    - Hierarchical tags (2-3 levels): #project/alpha, #client/acme/project
+
+    Design:
+    - Pure text parsing (no LLM calls)
+    - User-controlled taxonomy
+    - Supports batch operations (future)
+
+    Pattern: #[alphanumeric_-]+(/[alphanumeric_-]+)*
+    - Allows: letters, numbers, underscores, hyphens
+    - Hierarchy delimiter: /
+    - Max practical depth: 3 (soft limit, UI encourages 2)
+
+    Examples:
+        "#project/alpha and #sprint/planning" → ["project/alpha", "sprint/planning"]
+        "#personal #health/fitness" → ["personal", "health/fitness"]
+        "#work-stuff #client-acme" → ["work-stuff", "client-acme"]
+
+    Args:
+        text: Note content with embedded #hashtags
+
+    Returns:
+        List of unique tag names (without # prefix)
+    """
+    # Regex pattern for hashtags with optional hierarchy
+    # Matches: #tag or #parent/child or #grandparent/parent/child
+    # Allows: a-z A-Z 0-9 _ - (no spaces)
+    pattern = r'#([a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*)'
+
+    matches = re.findall(pattern, text)
+
+    # Deduplicate while preserving order (for consistency)
+    seen = set()
+    unique_tags = []
+    for tag in matches:
+        tag_lower = tag.lower()  # Case-insensitive deduplication
+        if tag_lower not in seen:
+            seen.add(tag_lower)
+            unique_tags.append(tag_lower)
+
+    return unique_tags
 
 
 def _extract_time_references(text: str, current_date: str = None) -> List[Dict[str, Any]]:
