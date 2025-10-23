@@ -4,21 +4,22 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "dental appointment"
+      ],
       "where": [],
       "when": [
         {
           "original": "October 25 at 5 pm",
           "parsed": "2025-10-25T17:00:00",
           "type": "absolute"
-        },
-        {
-          "original": "5 pm",
-          "parsed": "2025-10-20T17:00:00",
-          "type": "absolute"
         }
       ],
-      "tags": []
+      "tags": [
+        "task",
+        "health",
+        "event"
+      ]
     }
   },
   {
@@ -29,24 +30,23 @@
         "Sarah"
       ],
       "what": [
-        "memory consolidation",
+        "memory consolidation research",
         "hippocampus",
         "note-taking systems"
       ],
-      "where": [
-        "meeting"
-      ],
+      "where": [],
       "when": [
         {
           "original": "today",
-          "parsed": "2025-10-20T00:00:00",
+          "parsed": "2025-10-21T00:00:00",
           "type": "relative"
         }
       ],
       "tags": [
-        "research",
-        "neuroscience",
-        "meeting"
+        "record",
+        "discussion",
+        "people",
+        "work"
       ]
     }
   },
@@ -55,12 +55,15 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "new project"
+      ],
       "where": [],
       "when": [],
       "tags": [
-        "excitement",
-        "project"
+        "project",
+        "plan",
+        "work"
       ]
     }
   },
@@ -70,15 +73,17 @@
     "extracted": {
       "who": [],
       "what": [
-        "JWT tokens",
+        "authentication bug",
         "login API",
-        "authentication bug"
+        "JWT tokens"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "security",
-        "bug fix"
+        "task",
+        "work",
+        "project",
+        "solving"
       ]
     }
   },
@@ -89,13 +94,15 @@
       "who": [],
       "what": [
         "Redis",
-        "Memcached"
+        "Memcached",
+        "performance tradeoffs"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "caching",
-        "performance"
+        "question",
+        "work",
+        "project"
       ]
     }
   },
@@ -111,17 +118,14 @@
       "when": [
         {
           "original": "tomorrow at 2pm",
-          "parsed": "2025-10-21T14:00:00",
+          "parsed": "2025-10-22T14:00:00",
           "type": "relative"
-        },
-        {
-          "original": "2pm",
-          "parsed": "2025-10-20T14:00:00",
-          "type": "absolute"
         }
       ],
       "tags": [
-        "planning"
+        "task",
+        "people",
+        "event"
       ]
     }
   },
@@ -133,18 +137,16 @@
       "what": [
         "asyncio.gather",
         "asyncio.create_task",
-        "async",
-        "await",
+        "async/await patterns",
         "concurrent operations",
         "fire-and-forget"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "programming",
-        "concurrency",
-        "python",
-        "async"
+        "reference",
+        "work",
+        "learning"
       ]
     }
   },
@@ -157,21 +159,22 @@
         "Jordan"
       ],
       "what": [
+        "authentication refactor",
         "OAuth2"
       ],
-      "where": [
-        "team standup"
-      ],
+      "where": [],
       "when": [
         {
           "original": "Friday",
-          "parsed": "2025-10-17T00:00:00",
+          "parsed": "2025-10-24T00:00:00",
           "type": "absolute"
         }
       ],
       "tags": [
-        "meeting",
-        "security"
+        "task",
+        "work",
+        "project",
+        "discussion"
       ]
     }
   },
@@ -180,12 +183,16 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "procrastination",
+        "documentation"
+      ],
       "where": [],
       "when": [],
       "tags": [
-        "procrastination",
-        "self-reflection"
+        "question",
+        "health",
+        "work"
       ]
     }
   },
@@ -202,9 +209,10 @@
       "where": [],
       "when": [],
       "tags": [
-        "product ideas",
-        "feature planning",
-        "api"
+        "plan",
+        "work",
+        "project",
+        "creating"
       ]
     }
   },
@@ -213,12 +221,14 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "Lakers game"
+      ],
       "where": [],
       "when": [],
       "tags": [
-        "sports",
-        "game"
+        "record",
+        "event"
       ]
     }
   },
@@ -236,9 +246,9 @@
       "where": [],
       "when": [],
       "tags": [
-        "neuroscience",
-        "sleep",
-        "brain function"
+        "reference",
+        "learning",
+        "health"
       ]
     }
   },
@@ -247,12 +257,16 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "prioritization",
+        "tasks"
+      ],
       "where": [],
       "when": [],
       "tags": [
-        "planning",
-        "overwhelm"
+        "task",
+        "health",
+        "solving"
       ]
     }
   },
@@ -266,16 +280,15 @@
       "what": [
         "career growth",
         "work-life balance",
-        "boundaries"
+        "setting boundaries"
       ],
-      "where": [
-        "coffee chat"
-      ],
+      "where": [],
       "when": [],
       "tags": [
-        "career",
-        "work-life",
-        "advice"
+        "record",
+        "discussion",
+        "people",
+        "work"
       ]
     }
   },
@@ -293,9 +306,8 @@
       "where": [],
       "when": [],
       "tags": [
-        "shopping",
-        "daily",
-        "groceries"
+        "task",
+        "home"
       ]
     }
   },
@@ -304,18 +316,21 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "sunset"
+      ],
       "where": [],
       "when": [
         {
           "original": "today",
-          "parsed": "2025-10-20T00:00:00",
+          "parsed": "2025-10-21T00:00:00",
           "type": "relative"
         }
       ],
       "tags": [
-        "gratitude",
-        "sunset"
+        "record",
+        "health",
+        "people"
       ]
     }
   },
@@ -325,19 +340,16 @@
     "extracted": {
       "who": [],
       "what": [
-        "indexing",
-        "notes",
-        "retrieval",
-        "folders",
-        "benchmark"
+        "indexing notes by entities",
+        "retrieval speed",
+        "benchmarking"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "performance",
-        "technology",
-        "research",
-        "benchmarking"
+        "question",
+        "work",
+        "project"
       ]
     }
   },
@@ -345,27 +357,25 @@
     "note_id": "18",
     "status": "success",
     "extracted": {
-      "who": [
-        "client",
+      "who": [],
+      "what": [
+        "feature",
+        "timeline",
         "PM"
       ],
-      "what": [
-        "feature"
-      ],
-      "where": [
-        "meeting"
-      ],
+      "where": [],
       "when": [
         {
           "original": "end of month",
-          "parsed": null,
+          "parsed": "2025-10-31T00:00:00",
           "type": "absolute"
         }
       ],
       "tags": [
-        "meeting",
-        "timeline",
-        "planning"
+        "task",
+        "work",
+        "project",
+        "discussion"
       ]
     }
   },
@@ -377,16 +387,15 @@
       "what": [
         "PostgreSQL",
         "EXPLAIN ANALYZE",
-        "query planning",
-        "execution times"
+        "query planning costs",
+        "actual execution times"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "database",
-        "performance",
-        "query",
-        "analysis"
+        "reference",
+        "work",
+        "learning"
       ]
     }
   },
@@ -400,13 +409,13 @@
       "when": [
         {
           "original": "today",
-          "parsed": "2025-10-20T00:00:00",
+          "parsed": "2025-10-21T00:00:00",
           "type": "relative"
         }
       ],
       "tags": [
-        "productivity",
-        "well-being"
+        "record",
+        "health"
       ]
     }
   },
@@ -416,19 +425,19 @@
     "extracted": {
       "who": [],
       "what": [
+        "vector embeddings",
+        "semantic search",
         "sentence-transformers",
         "ChromaDB",
-        "cosine similarity",
-        "semantic search",
-        "vector embeddings"
+        "cosine similarity"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "ai",
-        "search",
-        "technology",
-        "data"
+        "task",
+        "work",
+        "project",
+        "creating"
       ]
     }
   },
@@ -438,17 +447,16 @@
     "extracted": {
       "who": [],
       "what": [
-        "React",
-        "SEO",
-        "single-page app",
-        "server-rendered"
+        "single-page React app",
+        "server-rendered",
+        "SEO"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "technology",
-        "architecture",
-        "decision"
+        "question",
+        "work",
+        "project"
       ]
     }
   },
@@ -459,20 +467,21 @@
       "who": [],
       "what": [
         "bug",
-        "config file"
+        "config file",
+        "typo"
       ],
       "where": [],
       "when": [
         {
           "original": "3 hours",
-          "parsed": "2025-10-19T21:00:00",
+          "parsed": null,
           "type": "duration"
         }
       ],
       "tags": [
-        "debugging",
-        "issue",
-        "technical"
+        "record",
+        "solving",
+        "work"
       ]
     }
   },
@@ -481,7 +490,10 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "time estimation",
+        "goal completion"
+      ],
       "where": [],
       "when": [
         {
@@ -491,9 +503,9 @@
         }
       ],
       "tags": [
-        "goal-tracking",
-        "productivity",
-        "time-estimation"
+        "record",
+        "work",
+        "project"
       ]
     }
   },
@@ -509,9 +521,9 @@
       "where": [],
       "when": [],
       "tags": [
-        "research",
-        "technology",
-        "ai"
+        "question",
+        "learning",
+        "work"
       ]
     }
   },
@@ -523,19 +535,17 @@
       "what": [
         "tests",
         "changelog",
-        "main",
-        "release",
-        "logs",
         "merge",
-        "tag"
+        "tag release",
+        "monitor logs"
       ],
       "where": [],
       "when": [],
       "tags": [
-        "deployment",
-        "workflow",
-        "operations",
-        "monitoring"
+        "task",
+        "plan",
+        "work",
+        "project"
       ]
     }
   },
@@ -554,8 +564,9 @@
       ],
       "when": [],
       "tags": [
-        "meeting",
-        "ai"
+        "record",
+        "people",
+        "event"
       ]
     }
   },
@@ -565,8 +576,10 @@
     "extracted": {
       "who": [],
       "what": [
-        "SQLite",
-        "FTS5",
+        "SQLite FTS5",
+        "boolean queries",
+        "AND",
+        "OR",
         "python",
         "flask",
         "django"
@@ -574,10 +587,9 @@
       "where": [],
       "when": [],
       "tags": [
-        "database",
-        "technology",
-        "query",
-        "development"
+        "reference",
+        "work",
+        "learning"
       ]
     }
   },
@@ -586,13 +598,17 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "refactor",
+        "feature",
+        "premature"
+      ],
       "where": [],
       "when": [],
       "tags": [
-        "refactoring",
-        "feature-development",
-        "decision"
+        "question",
+        "work",
+        "project"
       ]
     }
   },
@@ -601,29 +617,21 @@
     "status": "success",
     "extracted": {
       "who": [],
-      "what": [],
+      "what": [
+        "annual checkup"
+      ],
       "where": [],
       "when": [
         {
-          "original": "next Tuesday",
-          "parsed": null,
+          "original": "next Tuesday at 10am",
+          "parsed": "2025-10-28T10:00:00",
           "type": "relative"
-        },
-        {
-          "original": "10am",
-          "parsed": "2025-10-20T10:00:00",
-          "type": "absolute"
-        },
-        {
-          "original": "Tuesday",
-          "parsed": "2025-10-14T00:00:00",
-          "type": "absolute"
         }
       ],
       "tags": [
+        "task",
         "health",
-        "appointment",
-        "planning"
+        "event"
       ]
     }
   }

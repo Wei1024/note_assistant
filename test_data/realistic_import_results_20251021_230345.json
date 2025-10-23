@@ -1,0 +1,777 @@
+[
+  {
+    "note_id": "1",
+    "theme": "graphrag_project",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "discussion",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "discussion",
+      "record",
+      "work",
+      "project",
+      "people"
+    ]
+  },
+  {
+    "note_id": "2",
+    "theme": "graphrag_project",
+    "status": "success",
+    "extracted_tags": [
+      "decision",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "decision",
+      "plan",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "3",
+    "theme": "graphrag_project",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project",
+      "creating"
+    ],
+    "expected_tags": [
+      "task",
+      "creating",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "4",
+    "theme": "neuroscience",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "learning",
+      "health"
+    ],
+    "expected_tags": [
+      "record",
+      "learning",
+      "discussion",
+      "people"
+    ]
+  },
+  {
+    "note_id": "5",
+    "theme": "neuroscience",
+    "status": "success",
+    "extracted_tags": [
+      "reference",
+      "health",
+      "learning"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "6",
+    "theme": "neuroscience",
+    "status": "success",
+    "extracted_tags": [
+      "learning",
+      "health",
+      "reference"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "7",
+    "theme": "health_fitness",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "health"
+    ],
+    "expected_tags": [
+      "record",
+      "health"
+    ]
+  },
+  {
+    "note_id": "8",
+    "theme": "health_fitness",
+    "status": "success",
+    "extracted_tags": [
+      "plan",
+      "health",
+      "task"
+    ],
+    "expected_tags": [
+      "plan",
+      "health"
+    ]
+  },
+  {
+    "note_id": "9",
+    "theme": "health_fitness",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "learning",
+      "health"
+    ],
+    "expected_tags": [
+      "record",
+      "learning",
+      "health",
+      "people"
+    ]
+  },
+  {
+    "note_id": "10",
+    "theme": "mental_health",
+    "status": "success",
+    "extracted_tags": [
+      "plan",
+      "health",
+      "work"
+    ],
+    "expected_tags": [
+      "record",
+      "health"
+    ]
+  },
+  {
+    "note_id": "11",
+    "theme": "mental_health",
+    "status": "success",
+    "extracted_tags": [
+      "discussion",
+      "work",
+      "people",
+      "plan"
+    ],
+    "expected_tags": [
+      "record",
+      "discussion",
+      "people",
+      "health"
+    ]
+  },
+  {
+    "note_id": "12",
+    "theme": "mental_health",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "health",
+      "plan"
+    ],
+    "expected_tags": [
+      "record",
+      "health"
+    ]
+  },
+  {
+    "note_id": "13",
+    "theme": "daily_tasks",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "home",
+      "health"
+    ],
+    "expected_tags": [
+      "task",
+      "home"
+    ]
+  },
+  {
+    "note_id": "14",
+    "theme": "daily_tasks",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "health",
+      "plan"
+    ],
+    "expected_tags": [
+      "task",
+      "health",
+      "event"
+    ]
+  },
+  {
+    "note_id": "15",
+    "theme": "daily_tasks",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "people",
+      "event"
+    ],
+    "expected_tags": [
+      "task",
+      "people",
+      "event"
+    ]
+  },
+  {
+    "note_id": "16",
+    "theme": "team_collaboration",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "project",
+      "discussion"
+    ],
+    "expected_tags": [
+      "record",
+      "discussion",
+      "work",
+      "project",
+      "people"
+    ]
+  },
+  {
+    "note_id": "17",
+    "theme": "team_collaboration",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "feedback",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "feedback",
+      "record",
+      "work",
+      "project",
+      "people"
+    ]
+  },
+  {
+    "note_id": "18",
+    "theme": "team_collaboration",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "solving",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "solving",
+      "work",
+      "project",
+      "people"
+    ]
+  },
+  {
+    "note_id": "19",
+    "theme": "technical_learning",
+    "status": "success",
+    "extracted_tags": [
+      "reference",
+      "work",
+      "learning"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning",
+      "work"
+    ]
+  },
+  {
+    "note_id": "20",
+    "theme": "technical_learning",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "solving"
+    ],
+    "expected_tags": [
+      "question",
+      "solving",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "21",
+    "theme": "technical_learning",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "22",
+    "theme": "technical_learning",
+    "status": "success",
+    "extracted_tags": [
+      "question",
+      "work",
+      "learning"
+    ],
+    "expected_tags": [
+      "question",
+      "learning",
+      "work"
+    ]
+  },
+  {
+    "note_id": "23",
+    "theme": "client_work",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "plan",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "discussion",
+      "work",
+      "project",
+      "event"
+    ]
+  },
+  {
+    "note_id": "24",
+    "theme": "client_work",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "task",
+      "work",
+      "project",
+      "people"
+    ]
+  },
+  {
+    "note_id": "25",
+    "theme": "client_work",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "feedback"
+    ],
+    "expected_tags": [
+      "record",
+      "feedback",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "26",
+    "theme": "product_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "plan",
+      "creating",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "27",
+    "theme": "product_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "plan",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "plan",
+      "decision",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "28",
+    "theme": "product_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "decision"
+    ],
+    "expected_tags": [
+      "record",
+      "learning",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "29",
+    "theme": "deployment",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "task",
+      "plan",
+      "creating",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "30",
+    "theme": "deployment",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "project",
+      "solving"
+    ],
+    "expected_tags": [
+      "record",
+      "solving",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "31",
+    "theme": "deployment",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "task",
+      "creating",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "32",
+    "theme": "debugging",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "solving"
+    ],
+    "expected_tags": [
+      "task",
+      "solving",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "33",
+    "theme": "debugging",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "solving",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "solving",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "34",
+    "theme": "debugging",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work"
+    ],
+    "expected_tags": [
+      "question",
+      "record",
+      "solving",
+      "work",
+      "project"
+    ]
+  },
+  {
+    "note_id": "35",
+    "theme": "family_personal",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "people",
+      "home",
+      "event"
+    ],
+    "expected_tags": [
+      "record",
+      "people"
+    ]
+  },
+  {
+    "note_id": "36",
+    "theme": "family_personal",
+    "status": "success",
+    "extracted_tags": [
+      "plan",
+      "people",
+      "event"
+    ],
+    "expected_tags": [
+      "task",
+      "plan",
+      "people",
+      "event"
+    ]
+  },
+  {
+    "note_id": "37",
+    "theme": "family_personal",
+    "status": "success",
+    "extracted_tags": [
+      "plan",
+      "people",
+      "work"
+    ],
+    "expected_tags": [
+      "record",
+      "people",
+      "event"
+    ]
+  },
+  {
+    "note_id": "38",
+    "theme": "reading_learning",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "learning",
+      "health"
+    ],
+    "expected_tags": [
+      "record",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "39",
+    "theme": "reading_learning",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "learning",
+      "health"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "40",
+    "theme": "reading_learning",
+    "status": "success",
+    "extracted_tags": [
+      "task",
+      "learning",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "41",
+    "theme": "moments_gratitude",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "home"
+    ],
+    "expected_tags": [
+      "record",
+      "health"
+    ]
+  },
+  {
+    "note_id": "42",
+    "theme": "moments_gratitude",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "people",
+      "health",
+      "home"
+    ],
+    "expected_tags": [
+      "record",
+      "health"
+    ]
+  },
+  {
+    "note_id": "43",
+    "theme": "random_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "question",
+      "learning",
+      "project"
+    ],
+    "expected_tags": [
+      "question",
+      "record",
+      "work"
+    ]
+  },
+  {
+    "note_id": "44",
+    "theme": "random_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "question",
+      "learning",
+      "work"
+    ],
+    "expected_tags": [
+      "question",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "45",
+    "theme": "random_ideas",
+    "status": "success",
+    "extracted_tags": [
+      "question",
+      "work",
+      "learning"
+    ],
+    "expected_tags": [
+      "question",
+      "plan",
+      "work"
+    ]
+  },
+  {
+    "note_id": "46",
+    "theme": "reflection_review",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "feedback"
+    ]
+  },
+  {
+    "note_id": "47",
+    "theme": "reflection_review",
+    "status": "success",
+    "extracted_tags": [
+      "learning",
+      "work",
+      "plan"
+    ],
+    "expected_tags": [
+      "record",
+      "learning"
+    ]
+  },
+  {
+    "note_id": "48",
+    "theme": "reflection_review",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "record",
+      "feedback"
+    ]
+  },
+  {
+    "note_id": "49",
+    "theme": "conference_learning",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "learning",
+      "work",
+      "project"
+    ],
+    "expected_tags": [
+      "reference",
+      "learning",
+      "work",
+      "people"
+    ]
+  },
+  {
+    "note_id": "50",
+    "theme": "conference_learning",
+    "status": "success",
+    "extracted_tags": [
+      "record",
+      "people",
+      "event"
+    ],
+    "expected_tags": [
+      "record",
+      "discussion",
+      "work",
+      "people"
+    ]
+  }
+]
