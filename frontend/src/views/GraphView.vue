@@ -65,11 +65,11 @@ function getNodeColor(node: GraphNode): string {
   if (entityCount === 0) {
     return colors.mutedSage // No entities
   } else if (entityCount >= 5) {
-    return colors.vibrantGold // Rich metadata
+    return colors.dimension.isKnowledge // Rich metadata
   } else if (entityCount >= 3) {
-    return colors.deepPurple // Medium metadata
+    return colors.dimension.isExploratory // Medium metadata
   } else {
-    return colors.softBlue // Sparse metadata
+    return colors.dimension.isSocial // Sparse metadata
   }
 }
 
@@ -196,7 +196,10 @@ function renderGraph() {
   currentZoom = zoom
   svg.call(zoom)
 
-  const { nodes, edges } = graphData.value
+  const { nodes } = graphData.value
+
+  // Use filtered edges based on current filter selection
+  const edges = filteredEdges.value
 
   // Edges are already in D3 format (source/target) from GraphRAG backend
   const d3Links = edges.map(edge => ({
@@ -206,7 +209,7 @@ function renderGraph() {
     weight: edge.weight
   }))
 
-  // Calculate connection counts for sizing
+  // Calculate connection counts for sizing (based on filtered edges)
   const connectionCounts = new Map<string, number>()
   nodes.forEach(node => {
     const count = edges.filter(e => e.source === node.id || e.target === node.id).length
@@ -400,15 +403,6 @@ function renderGraph() {
 }
 
 // ========================================
-// Cluster Interaction
-// ========================================
-function handleClusterClick(clusterId: number, event: MouseEvent) {
-  selectCluster(clusterId)
-  positionCard(event)
-  cardVisible.value = true
-}
-
-// ========================================
 // Lifecycle & Watchers
 // ========================================
 onMounted(async () => {
@@ -422,6 +416,14 @@ onBeforeUnmount(() => {
 })
 
 watch(graphData, async () => {
+  if (graphData.value) {
+    await nextTick()
+    renderGraph()
+  }
+})
+
+// Re-render graph when filter changes
+watch(filterRelation, async () => {
   if (graphData.value) {
     await nextTick()
     renderGraph()
@@ -442,7 +444,10 @@ watch(graphData, async () => {
     <div class="controls" :style="{ marginTop: spacing[4], display: 'flex', gap: spacing[6], alignItems: 'center', justifyContent: 'space-between' }">
       <!-- Node count info -->
       <div v-if="graphData" :style="{ fontSize: typography.fontSize.sm, color: colors.text.secondary }">
-        {{ graphData.nodes.length }} notes, {{ graphData.edges.length }} connections
+        {{ graphData.nodes.length }} notes, {{ filteredEdges.length }} connections
+        <span v-if="filterRelation" :style="{ color: colors.text.muted }">
+          ({{ graphData.edges.length }} total)
+        </span>
       </div>
 
       <!-- Edge type filter -->
@@ -465,7 +470,7 @@ watch(graphData, async () => {
           @click="setRelationFilter('semantic')"
           :style="{
             padding: `${spacing[2]} ${spacing[3]}`,
-            backgroundColor: filterRelation === 'semantic' ? colors.vibrantGold : colors.background.hover,
+            backgroundColor: filterRelation === 'semantic' ? colors.dimension.isKnowledge : colors.background.hover,
             color: filterRelation === 'semantic' ? colors.text.onDark : colors.text.primary,
             border: 'none',
             borderRadius: '6px',
@@ -479,7 +484,7 @@ watch(graphData, async () => {
           @click="setRelationFilter('entity_link')"
           :style="{
             padding: `${spacing[2]} ${spacing[3]}`,
-            backgroundColor: filterRelation === 'entity_link' ? colors.deepPurple : colors.background.hover,
+            backgroundColor: filterRelation === 'entity_link' ? colors.dimension.isExploratory : colors.background.hover,
             color: filterRelation === 'entity_link' ? colors.text.onDark : colors.text.primary,
             border: 'none',
             borderRadius: '6px',
@@ -493,7 +498,7 @@ watch(graphData, async () => {
           @click="setRelationFilter('tag_link')"
           :style="{
             padding: `${spacing[2]} ${spacing[3]}`,
-            backgroundColor: filterRelation === 'tag_link' ? colors.softBlue : colors.background.hover,
+            backgroundColor: filterRelation === 'tag_link' ? colors.dimension.isSocial : colors.background.hover,
             color: filterRelation === 'tag_link' ? colors.text.onDark : colors.text.primary,
             border: 'none',
             borderRadius: '6px',
@@ -535,9 +540,9 @@ watch(graphData, async () => {
         ></svg>
       </div>
 
-      <!-- Floating Card: Node or Cluster Details -->
+      <!-- Floating Card: Node Details -->
       <aside
-        v-if="(selectedNode || selectedCluster) && cardVisible"
+        v-if="selectedNode && cardVisible"
         class="details-panel floating-card"
         :style="{
           position: 'fixed',
@@ -619,7 +624,7 @@ watch(graphData, async () => {
                 :key="tag"
                 :style="{
                   padding: `${spacing[1]} ${spacing[3]}`,
-                  backgroundColor: colors.deepPurple,
+                  backgroundColor: colors.dimension.isExploratory,
                   color: colors.text.onDark,
                   borderRadius: '9999px',
                   fontSize: typography.fontSize.xs,

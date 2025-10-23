@@ -27,10 +27,14 @@ export function useKnowledgeGraph() {
 
   /**
    * Filtered edges based on relation type
+   * NOTE: Default (null) shows all edges (user tags are high-quality, not noisy)
    */
   const filteredEdges = computed(() => {
     if (!graphData.value?.edges) return []
-    if (!filterRelation.value) return graphData.value.edges
+    if (!filterRelation.value) {
+      // Default view: show all edges (semantic + entity + user tags)
+      return graphData.value.edges
+    }
     return graphData.value.edges.filter(e => e.relation === filterRelation.value)
   })
 
