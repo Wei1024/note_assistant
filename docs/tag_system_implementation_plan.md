@@ -1,5 +1,26 @@
 # User Tag System - Implementation Plan
 
+**Last Updated:** 2025-10-22
+**Status:** Phase 1-2 Complete ✅ | Phase 3 In Progress 🚧
+
+## Progress Summary
+
+✅ **Completed:**
+- Phase 1: Backend infrastructure (schema, repository, hashtag extraction)
+- Phase 2: API endpoints (tag search, autocomplete)
+- Migration script and documentation
+- Test data with 11 manually tagged notes
+- 3 meaningful tag edges created (vs 183 noisy LLM edges before)
+
+🚧 **Current:**
+- Phase 3: Frontend autocomplete component
+
+⏳ **Next:**
+- Tag input UI in note editor
+- Tag management dashboard (optional)
+
+---
+
 ## Overview
 
 Transition from LLM-generated tags to user-controlled hashtag system with hierarchical support.
@@ -133,11 +154,13 @@ extract_hashtags_from_text("#Personal #health/fitness #HEALTH/FITNESS")
 
 ---
 
-## Phase 2: API Endpoints (TODO)
+## Phase 2: API Endpoints ✅
 
-### 2.1 Tag Management Routes
+### 2.1 Tag Management Routes ✅
 
-**File:** `api/routes/tags.py` (new)
+**File:** `api/routes/tags.py`
+
+**Status:** Core search endpoints implemented and tested
 
 ```python
 # List all tags (tree structure)
@@ -259,9 +282,21 @@ Response: {
 
 ---
 
-## Phase 3: Frontend (TODO)
+## Phase 3: Frontend 🚧
 
-### 3.1 Tag Input Component
+**Current Editor:** `frontend/src/views/CaptureView.vue` (simple `<textarea>`)
+
+### 3.1 Tag Autocomplete Component (IN PROGRESS)
+
+**Next Steps:**
+1. Create `TagAutocomplete.vue` component
+2. Detect `#` keystroke in textarea
+3. Extract query after `#` (e.g., `#pro` → query="pro")
+4. Call `GET /tags/search?q=pro`
+5. Show dropdown below cursor
+6. Insert selected tag on click/enter
+
+### 3.2 Tag Input Component (PLANNED)
 
 **File:** `frontend/src/components/TagInput.vue` (new)
 
@@ -654,10 +689,61 @@ Body: {
 
 ---
 
+## Quick Start Guide
+
+### Testing Current System
+
+**1. Add hashtags to notes:**
+```bash
+# Edit any note file in ~/Notes/
+# Add tags like: #project/alpha #meeting #urgent
+```
+
+**2. Re-run migration to detect new tags:**
+```bash
+python migrate_to_user_tags.py
+```
+
+**3. Rebuild edges:**
+```bash
+python rebuild_all_edges.py
+```
+
+**4. Test API:**
+```bash
+# Start backend
+cd api && uvicorn main:app --reload
+
+# Test search
+curl "http://localhost:8000/tags/search?q=proj"
+
+# Get all tags
+curl "http://localhost:8000/tags"
+```
+
+**5. View in graph:**
+```bash
+# Start frontend
+cd frontend && npm run dev
+
+# Open http://localhost:5173
+# Click graph view, toggle filters
+```
+
+### Current Test Data
+
+- **11 notes** manually tagged
+- **27 unique tags** (14 root + 13 children)
+- **3 tag edges** connecting related notes
+- **Clusters:** #project/graphrag (4), #meeting (3), #personal (3), #health/fitness (2)
+
+---
+
 ## References
 
 - **Research doc**: User's tag research compilation
 - **Database schema**: `api/db/schema_tags.sql`
 - **Tag repository**: `api/repositories/tag_repository.py`
+- **Tag API routes**: `api/routes/tags.py`
 - **Hashtag extraction**: `api/services/episodic.py`
-- **Original LLM taxonomy**: Removed (see git history for taxonomy v2)
+- **Migration summary**: `docs/tag_system_migration_complete.md`
