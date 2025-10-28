@@ -2,7 +2,6 @@
 Defines and initializes all database tables
 """
 import sqlite3
-from pathlib import Path
 from ..config import DB_PATH
 
 
@@ -293,6 +292,69 @@ def ensure_db():
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_clusters_size
         ON graph_clusters(size)
+    """)
+
+    # ========================================================================
+    # User Tag System (Hierarchical Tags)
+    # ========================================================================
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tags (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            parent_id TEXT,
+            level INTEGER NOT NULL DEFAULT 0,
+            use_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            last_used_at TEXT,
+
+            FOREIGN KEY (parent_id) REFERENCES tags(id) ON DELETE CASCADE,
+            CHECK (level >= 0 AND level <= 3)
+        )
+    """)
+
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tags_level ON tags(level)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tags_use_count ON tags(use_count DESC)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_tags_last_used ON tags(last_used_at DESC)")
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS note_tags (
+            note_id TEXT NOT NULL,
+            tag_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            source TEXT DEFAULT 'user',
+
+            PRIMARY KEY (note_id, tag_id),
+            FOREIGN KEY (note_id) REFERENCES graph_nodes(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_note_tags_note ON note_tags(note_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_note_tags_tag ON note_tags(tag_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_note_tags_created ON note_tags(created_at DESC)")
+
+    # Triggers for tag usage tracking
+    cur.execute("""
+        CREATE TRIGGER IF NOT EXISTS increment_tag_usage
+        AFTER INSERT ON note_tags
+        BEGIN
+            UPDATE tags
+            SET use_count = use_count + 1,
+                last_used_at = NEW.created_at
+            WHERE id = NEW.tag_id;
+        END
+    """)
+
+    cur.execute("""
+        CREATE TRIGGER IF NOT EXISTS decrement_tag_usage
+        AFTER DELETE ON note_tags
+        BEGIN
+            UPDATE tags
+            SET use_count = use_count - 1
+            WHERE id = OLD.tag_id;
+        END
     """)
 
     con.commit()
