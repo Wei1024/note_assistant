@@ -310,6 +310,57 @@ async def get_graph_stats():
         con.close()
 
 
+@app.post("/graph/cluster")
+async def run_clustering_endpoint(resolution: float = 1.0):
+    """Run clustering on the entire graph
+
+    Args:
+        resolution: Clustering resolution (higher = more clusters, default 1.0)
+
+    Returns:
+        Clustering statistics and cluster summaries
+    """
+    from .services.clustering import run_clustering
+
+    stats = await run_clustering(resolution=resolution)
+    return stats
+
+
+@app.get("/graph/clusters")
+async def get_clusters():
+    """Get all clusters with metadata
+
+    Returns:
+        List of clusters with id, summary, size
+    """
+    from .services.clustering import get_all_clusters
+
+    clusters = get_all_clusters()
+    return {
+        "clusters": clusters,
+        "total": len(clusters)
+    }
+
+
+@app.get("/graph/clusters/{cluster_id}")
+async def get_cluster_detail(cluster_id: int):
+    """Get detailed information for a specific cluster
+
+    Args:
+        cluster_id: Cluster ID
+
+    Returns:
+        Cluster metadata with list of all nodes in the cluster
+    """
+    from .services.clustering import get_cluster_details
+
+    cluster = get_cluster_details(cluster_id)
+    if not cluster:
+        return {"error": "Cluster not found"}, 404
+
+    return cluster
+
+
 @app.get("/notes/{note_id}/content")
 async def get_note_content(note_id: str):
     """Get markdown content for a note

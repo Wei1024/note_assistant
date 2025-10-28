@@ -27,12 +27,15 @@ def get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
-def get_llm(temperature: Optional[float] = None, format: Optional[str] = None) -> ChatOllama:
+_UNSET = object()  # Sentinel value to detect if parameter was passed
+
+def get_llm(temperature: Optional[float] = None, format: Optional[str] = _UNSET) -> ChatOllama:
     """Get or create singleton LLM instance with connection pooling
 
     Args:
         temperature: Optional temperature override (default: from config)
-        format: Optional format override (e.g., "json")
+        format: Optional format override. Use "json" for JSON, None for plain text.
+                If not specified, defaults to "json" for singleton.
 
     Returns:
         ChatOllama instance
@@ -40,16 +43,16 @@ def get_llm(temperature: Optional[float] = None, format: Optional[str] = None) -
     global _llm_instance
 
     # If requesting different parameters, create new instance
-    if temperature is not None or format is not None:
+    if temperature is not None or format is not _UNSET:
         return ChatOllama(
             base_url=LLM_BASE_URL,
             model=LLM_MODEL,
             temperature=temperature if temperature is not None else LLM_TEMPERATURE,
-            format=format,
+            format=format if format is not _UNSET else None,
             http_client=get_http_client()
         )
 
-    # Otherwise return singleton
+    # Otherwise return singleton with JSON format default
     if _llm_instance is None:
         _llm_instance = ChatOllama(
             base_url=LLM_BASE_URL,

@@ -276,5 +276,24 @@ def ensure_db():
         ON graph_edges(relation)
     """)
 
+    # ========================================================================
+    # Cluster Metadata (Phase 2.5: Community Detection)
+    # ========================================================================
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS graph_clusters (
+            id INTEGER PRIMARY KEY,
+            title TEXT,                -- Short title (3-5 words) for UI display
+            summary TEXT,              -- LLM-generated cluster summary
+            size INTEGER DEFAULT 0,    -- Number of nodes in cluster
+            created TEXT NOT NULL,
+            updated TEXT NOT NULL
+        )
+    """)
+
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_clusters_size
+        ON graph_clusters(size)
+    """)
+
     con.commit()
     con.close()

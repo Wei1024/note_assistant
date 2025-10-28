@@ -20,12 +20,13 @@
 
 ## Architecture Overview
 
-Implementing a local GraphRAG system with four layers:
+Implementing a local GraphRAG system with five layers:
 
 1. **Episodic Layer** - Extract WHO/WHAT/WHEN/WHERE entities from notes ✅ **COMPLETE**
 2. **Semantic Layer** - Create embeddings and auto-link via similarity ✅ **COMPLETE**
 3. **Prospective Layer** - Extract future intentions as metadata (no edges) ✅ **COMPLETE**
-4. **Retrieval Layer** - Hybrid search (FTS5 + embeddings) with graph expansion ⏸️ NOT STARTED
+4. **Clustering Layer** - Community detection with LLM summaries ✅ **COMPLETE** (Phase 2.5)
+5. **Retrieval Layer** - Hybrid search (FTS5 + embeddings) with graph expansion ⏸️ NOT STARTED
 
 ---
 
@@ -626,37 +627,146 @@ DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_t
 
 ---
 
+## Phase 2.5: Clustering Layer ✅ **COMPLETE**
+
+**Status**: ✅ **FULLY COMPLETE** (2025-10-27)
+**Duration**: ~4 hours
+
+### Implementation Summary
+
+Added community detection to identify thematic clusters in the note graph using NetworkX Louvain algorithm.
+
+### What Was Built
+
+**1. Clustering Service** (`api/services/clustering.py` - 364 lines)
+- `build_networkx_graph()` - Converts DB edges to NetworkX graph
+- `detect_communities()` - Louvain algorithm with configurable resolution
+- `assign_cluster_ids()` - Updates `graph_nodes.cluster_id`
+- `generate_cluster_summary()` - LLM generates title + summary for each cluster
+- `store_cluster_summary()` - Persists cluster metadata
+- `run_clustering()` - Full pipeline orchestration
+
+**2. Database Schema Updates**
+- Added `graph_clusters` table:
+  - `id` (INTEGER PRIMARY KEY)
+  - `title` (TEXT) - Short 3-5 word title for UI display
+  - `summary` (TEXT) - LLM-generated 1-2 sentence summary
+  - `size` (INTEGER) - Number of notes in cluster
+  - `created`, `updated` (TEXT)
+- `cluster_id` column already existed in `graph_nodes` (Phase 2 prep)
+
+**3. API Endpoints** (added to `api/main.py`)
+- `POST /graph/cluster?resolution=1.0` - Run clustering on entire graph
+- `GET /graph/clusters` - List all clusters with metadata
+- `GET /graph/clusters/{cluster_id}` - Get detailed cluster info with all nodes
+
+**4. LLM Integration**
+- JSON format for structured output (title + summary)
+- Fixed `get_llm()` sentinel pattern to properly handle `format=None` vs not passing format
+- Prompt engineered for concise titles (3-5 words) and summaries (1-2 sentences)
+
+### Test Results (59-note test dataset)
+
+```
+Nodes: 59
+Edges: 30 (semantic: 12, entity_link: 19, tag_link: 3)
+Clusters: 35
+
+Cluster Distribution:
+- 3 large clusters (5 notes each)
+- 5 medium clusters (3-4 notes each)
+- 3 small clusters (2 notes each)
+- 24 singleton clusters (1 note each)
+```
+
+**Example Clusters Generated:**
+
+| Cluster ID | Title | Summary | Size |
+|------------|-------|---------|------|
+| 10 | "Predictive AI for Notes" | Explores AI proactive retrieval before searches using GraphRAG and sentence transformers | 5 notes |
+| 2 | "Momo: Design and Creation" | Character design and note-taking tool implementation | 4 notes |
+| 34 | "Memory Consolidation Process" | Neural mechanisms of memory consolidation during sleep | 4 notes |
+
+**Why Many Singletons?**
+- Test dataset has diverse, unrelated synthetic notes
+- Real personal notes will cluster better (work projects, hobbies, family themes)
+- Sparse connectivity (30 edges / 59 nodes = 0.51 edges/node avg)
+
+### Key Design Decisions
+
+**1. JSON Format for Cluster Summaries**
+- Initially tried plain text, but UI needs both title and summary
+- Reverted to JSON with structured `{title, summary}` format
+- Allows clean separation: title for sidebar, summary for details
+
+**2. Sentinel Pattern Fix in `get_llm()`**
+- Problem: `get_llm(format=None)` wasn't creating new instance (returned singleton with JSON)
+- Solution: Used `_UNSET = object()` sentinel to detect if parameter was explicitly passed
+- Now `get_llm(format=None)` correctly creates plain text instance
+
+**3. Louvain Algorithm Choice**
+- **Why**: Best modularity-based community detection
+- **Resolution parameter**: Higher = more clusters, lower = fewer larger clusters
+- **Default**: 1.0 (good balance for most graphs)
+
+**4. Storage Strategy**
+- Cluster metadata in separate `graph_clusters` table (not JSON in nodes)
+- Enables efficient queries for cluster lists and sizes
+- LLM summaries regenerated on each clustering run (cheap with local LLM)
+
+### Files Created/Modified
+
+**Created:**
+- `api/services/clustering.py` (364 lines) - Complete clustering implementation
+- `scripts/test_clustering.py` - Test script for clustering pipeline
+
+**Modified:**
+- `api/db/schema.py` - Added `graph_clusters` table with title field
+- `api/main.py` - Added 3 clustering endpoints
+- `api/llm/client.py` - Fixed sentinel pattern for format parameter
+
+### API Usage Examples
+
+```bash
+# Run clustering
+curl -X POST http://localhost:8732/graph/cluster?resolution=1.0
+
+# List all clusters
+curl http://localhost:8732/graph/clusters
+
+# Get cluster details
+curl http://localhost:8732/graph/clusters/10
+```
+
+### Performance
+
+- **Graph building**: <50ms (59 nodes, 30 edges)
+- **Louvain detection**: <100ms
+- **LLM summaries**: ~500ms per cluster × 35 clusters = ~17s total
+- **Total clustering time**: ~20s for 59 notes
+
+---
+
 ## Next Steps
 
-### Immediate Options
+### Phase 4 - Retrieval Layer (NOT STARTED)
 
-**Option A: Phase 2.5 - Clustering**
-1. **Implement NetworkX clustering**
-   - Load graph from database
-   - Run Louvain community detection
-   - Store `cluster_id` in graph_nodes
-   - Generate LLM cluster summaries
+**Hybrid Search Implementation:**
+1. Combine FTS5 full-text + vector similarity
+2. Re-ranking algorithm
+3. Graph expansion (1-2 hops from top results)
+4. Cluster-aware retrieval (search within clusters)
 
-2. **Add clustering endpoints**
-   - `POST /graph/cluster_all` - Trigger clustering
-   - `GET /graph/cluster/{cluster_id}` - Get cluster notes
-   - `GET /graph/cluster_summary/{cluster_id}` - Get LLM summary
-
-**Option B: Phase 4 - Retrieval Layer**
-1. **Hybrid search implementation**
-   - Combine FTS5 + vector similarity
-   - Re-ranking algorithm
-   - Graph expansion (1-2 hops)
-
-2. **Context assembly for LLM**
-   - Assemble subgraph as context
-   - Pass to LLM for synthesis/Q&A
+**Context Assembly for LLM:**
+1. Assemble subgraph as context
+2. Include cluster summaries for context
+3. Pass to LLM for synthesis/Q&A
 
 ---
 
 ## Lessons Learned
 
-### Phase 1, 2 & 3 Insights
+### Phase 1, 2, 3 & 2.5 Insights
 
 1. **Research first, build second** - 30-note entity extraction test prevented bad architecture
 2. **Clean rewrite > incremental migration** - For small projects with no users, clean slate is faster
@@ -672,6 +782,10 @@ DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_t
 12. **Separate concerns matter** - Prospective memory (tasks) ≠ knowledge graph (semantic relationships)
 13. **Metadata vs edges trade-off** - Not everything needs to be a graph edge; metadata works for retrieval
 14. **User feedback is gold** - "Slightly more loose hairball" forced fundamental rethink
+15. **Sentinel pattern for optional params** - Use `_UNSET = object()` to distinguish `None` from not passed
+16. **JSON vs plain text LLM output** - Singleton pattern with default `format="json"` needs careful handling
+17. **UI needs drive data structure** - Added cluster titles when realized sidebar needs short labels
+18. **Test data ≠ production data** - Synthetic notes create more singletons than real personal notes
 
 ---
 
@@ -700,9 +814,9 @@ DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_t
 
 ---
 
-**Last Updated**: 2025-10-21
-**Current Phase**: Phase 3 ✅ Complete (Prospective Layer)
-**Next Milestone**: Phase 2.5 (Clustering) or Phase 4 (Retrieval)
+**Last Updated**: 2025-10-27
+**Current Phase**: Phase 2.5 ✅ Complete (Clustering)
+**Next Milestone**: Phase 4 (Retrieval Layer)
 
 ---
 
@@ -711,8 +825,10 @@ DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_t
 ✅ **Phase 1: Episodic** - WHO/WHAT/WHERE/WHEN extraction (Hybrid LLM + dateparser)
 ✅ **Phase 2: Semantic** - Embeddings + 3 edge types (semantic, entity_link, tag_link)
 ✅ **Phase 3: Prospective** - Metadata-only extraction (actions, questions, plans with WHEN linking)
+✅ **Phase 2.5: Clustering** - Community detection with LLM-generated titles + summaries
 ⏸️ **Phase 4: Retrieval** - Hybrid search + graph expansion (NOT STARTED)
 
 **Total Edge Types**: 3 (semantic, entity_link, tag_link) - Phase 3 is metadata-only
 **LLM Architecture**: Sequential Phase 1 → Phase 3 extraction (~600ms total)
 **Background Processing**: Phase 2 edge creation only (~2-3s async)
+**Clustering**: On-demand via API endpoint (~20s for 59 notes)
