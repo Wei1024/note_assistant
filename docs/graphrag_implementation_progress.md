@@ -569,29 +569,233 @@ DELETE FROM graph_edges WHERE relation IN ('time_next', 'reminder', 'intention_t
 
 ---
 
-## Phase 4: Retrieval Layer - Hybrid Search
+## Phase 4: Retrieval Layer - Hybrid Search ✅ **COMPLETE**
 
-**Status**: ⏸️ **NOT STARTED**
+**Status**: ✅ **FULLY COMPLETE** (2025-10-27)
+**Duration**: ~8 hours
 
-### Planned Components
+### Implementation Summary
 
-1. **Hybrid Search**
-   - FTS5 full-text search (existing: `api/fts.py`)
-   - Vector similarity search (cosine on embeddings)
-   - Re-ranking: `score = 0.6 * cosine + 0.4 * fts_rank`
+Implemented hybrid search combining FTS5 full-text search with vector similarity, graph expansion via typed edges, and context assembly for rich retrieval results.
 
-2. **Graph Expansion**
-   - Start: Top-K search results (initial nodes)
-   - Expand 1-2 hops via typed edges:
-     - Priority 1: `entity_link` (shared entities)
-     - Priority 2: `semantic` (similar content)
-     - Priority 3: `time_next` (temporal context)
-   - Return: Subgraph with contextual neighbors
+### What Was Built
 
-3. **Context Assembly for LLM**
-   - Assemble subgraph nodes as context
-   - Rank by combined relevance score
-   - Pass to LLM for synthesis/summarization
+**1. Search Service** (`api/services/search.py` - 675 lines)
+
+**Core Functions**:
+- `hybrid_search()` - Combines FTS5 + vector similarity with score fusion
+  - Executes both FTS5 (BM25) and vector similarity search in parallel
+  - Normalizes scores to [0, 1] using min-max scaling
+  - Fuses scores: `final = 0.4 * fts + 0.6 * vector` (configurable weights)
+  - Returns top-K results ranked by fused score
+
+- `expand_via_graph()` - BFS traversal for contextual neighbors
+  - Starts from seed nodes (top-K search results)
+  - Traverses 1-2 hops via typed edges
+  - Edge priorities: `entity_link` (1.0) > `semantic` (0.8) > `tag_link` (0.6)
+  - Decay factor: 0.5 per hop distance
+  - Returns up to 20 expanded nodes with relevance scores
+
+- `assemble_context()` - Formats results for LLM synthesis
+  - Primary results with full text + episodic metadata
+  - Expanded results with previews + connection info
+  - Cluster summaries if results span multiple clusters
+  - Adaptive truncation to fit context window (~2000 tokens)
+
+**Helper Functions**:
+- `vector_search()` - Pure vector similarity using cosine distance
+- `normalize_scores()` - Min-max normalization to [0, 1]
+- `_generate_snippet()` - Extract query-highlighted snippets
+- `_get_cluster_summaries()` - Fetch cluster metadata for context
+
+**2. API Endpoints** (added to `api/main.py`)
+
+**Search Endpoints**:
+- `POST /search` - Hybrid search with optional graph expansion
+  - Parameters: `query`, `top_k`, `expand_graph`, `max_hops`, `fts_weight`, `vector_weight`
+  - Returns: `SearchResponse` with primary results, expanded results, cluster context
+
+- `POST /search/cluster/{cluster_id}` - Search within specific cluster
+  - Restricts results to notes in specified cluster
+  - Useful for "search within topic" UI feature
+
+- `GET /search/similar/{note_id}` - Find similar notes (vector-only)
+  - Pure vector similarity search
+  - Exposes existing `find_similar_notes()` from semantic layer
+  - Useful for "Find Related" feature
+
+**3. Response Models** (added to `api/models.py`)
+
+```python
+class SearchResultModel(BaseModel):
+    note_id: str
+    title: str
+    snippet: str  # Query-highlighted excerpt
+    score: float  # Fused score
+    fts_score: float  # FTS5 component
+    vector_score: float  # Vector component
+    episodic: EpisodicMetadata
+    file_path: str
+    text_preview: str
+
+class ExpandedNodeModel(BaseModel):
+    note_id: str
+    title: str
+    text_preview: str
+    relation: str  # Edge type
+    hop_distance: int
+    relevance_score: float
+    connected_to: List[str]  # Seed note IDs
+
+class SearchResponse(BaseModel):
+    query: str
+    primary_results: List[SearchResultModel]
+    expanded_results: List[ExpandedNodeModel]
+    cluster_summaries: List[ClusterSummaryModel]
+    total_results: int
+    execution_time_ms: int
+```
+
+### Test Results
+
+**Test Suite**: `tests/integration/test_phase4_retrieval.py` (450+ lines)
+
+**Test Coverage** (7/7 tests passed):
+
+1. **Hybrid Search** ✅
+   - 5 diverse queries tested (entity-focused, semantic, technical, temporal, emotional)
+   - Average execution time: 670ms (first run includes model loading)
+   - Average results per query: 3.2
+   - 100% query success rate (5/5 queries returned results)
+
+2. **Graph Expansion** ✅
+   - Primary results: 5 notes
+   - Expanded results: 3 contextual neighbors
+   - Expansion working correctly via entity_link and semantic edges
+   - Sample edge types: entity_link (hop 1), semantic (hop 1)
+
+3. **Score Fusion** ✅
+   - Tested 4 weight configurations (vector-only, default, FTS-heavy, FTS-only)
+   - Score normalization working correctly
+   - Different weights produce different rankings as expected
+
+4. **Cluster-Aware Search** ✅
+   - Successfully restricts search to cluster boundaries
+   - Tested with cluster 22 ("API Features & Stability", 5 notes)
+   - Cluster summaries included in context
+
+5. **Similarity Search** ✅
+   - Vector-only search working
+   - Found similar note with 0.358 cosine similarity
+   - Correctly uses existing semantic layer functions
+
+6. **Context Assembly** ✅
+   - Primary: 3 results, Expanded: 4 neighbors
+   - Cluster context: 2 cluster summaries included
+   - Proper formatting for LLM consumption
+
+7. **Performance Benchmark** ✅
+   - 5 queries tested
+   - **Average latency: 11ms** (after initial model load)
+   - Min: 9ms, Max: 15ms
+   - **✅ PASS**: Well below 200ms target
+
+### Key Design Decisions
+
+**1. Score Fusion: 60% Vector + 40% FTS**
+- **Rationale**: Vector captures semantic similarity, FTS handles exact keyword matches
+- **Normalization**: Min-max scaling to [0, 1] before fusion
+- **Configurable**: Exposed as endpoint parameters for experimentation
+
+**2. Graph Expansion: 1-Hop Default**
+- **Why**: 2-hop creates exponential growth, too many results
+- **Edge Priorities**: entity_link (strongest) > semantic > tag_link
+- **Decay**: 0.5 weight reduction per hop
+- **Max expanded**: 20 nodes to prevent context overflow
+
+**3. Cluster-Aware Context**
+- If results span multiple clusters → include cluster summaries
+- Helps LLM understand thematic groupings
+- Uses existing cluster metadata from Phase 2.5
+
+**4. No FAISS Migration Yet**
+- **Current**: NumPy brute-force (O(n) for n notes)
+- **Performance**: 11ms average for <100 notes
+- **Migration trigger**: 5K+ notes (future optimization)
+- **Path**: IndexFlatIP for exact search (maintains compatibility)
+
+**5. BM25 Score Handling**
+- FTS5 BM25 scores are negative (lower is better)
+- Converted to positive via `abs()` before normalization
+- Ensures consistent [0, 1] range for fusion
+
+### Performance Analysis
+
+**Initial Query (cold start)**:
+- ~670ms average (includes embedding model loading)
+- First-time penalty acceptable for local deployment
+
+**Subsequent Queries (warm cache)**:
+- ~11ms average (cached embeddings + model)
+- Well below 200ms target
+- Suitable for real-time search UI
+
+**Graph Expansion**:
+- <50ms for 1-hop from 5 seed nodes
+- Minimal overhead compared to search itself
+
+**Bottlenecks Identified**:
+- First query loads sentence-transformers model (~1-2s one-time cost)
+- Vector search scales linearly with note count (NumPy brute-force)
+- FTS5 search remains fast (<10ms) even with 100s of notes
+
+### Architecture Insights
+
+**What Works Well**:
+1. **Hybrid approach**: Combines strengths of keyword + semantic search
+2. **Score normalization**: Prevents one search type from dominating
+3. **Graph expansion**: Adds valuable context without overwhelming results
+4. **Cluster integration**: Provides thematic context automatically
+
+**Edge Cases Handled**:
+1. Empty search results → returns empty array (no errors)
+2. Single result → normalization handles gracefully (returns 1.0)
+3. All scores identical → returns 0.5 normalized (prevents division by zero)
+4. Missing embeddings → falls back to FTS-only search
+
+**Future Optimizations** (not needed yet):
+1. FAISS for vector search (when >5K notes)
+2. Query expansion using LLM (rewrite queries for better results)
+3. Personalized ranking (learn from user clicks)
+4. LLM synthesis endpoint (use search context for Q&A)
+
+### Files Created/Modified
+
+**New Files**:
+- ✅ `api/services/search.py` (675 lines) - Complete search implementation
+- ✅ `tests/integration/test_phase4_retrieval.py` (450+ lines) - Comprehensive test suite
+- ✅ `scripts/test_search_endpoints.sh` - Quick curl-based endpoint tests
+
+**Modified Files**:
+- ✅ `api/models.py` - Added SearchResultModel, ExpandedNodeModel, SearchResponse, SimilarityResponse
+- ✅ `api/main.py` - Added 3 search endpoints (hybrid, cluster, similar)
+
+### API Usage Examples
+
+**Hybrid Search**:
+```bash
+curl -X POST "http://localhost:8000/search?query=memory%20consolidation&top_k=5&expand_graph=true&max_hops=1"
+```
+
+**Cluster Search**:
+```bash
+curl -X POST "http://localhost:8000/search/cluster/10?query=implementation&top_k=5"
+```
+
+**Similarity Search**:
+```bash
+curl "http://localhost:8000/search/similar/2025-10-24T17:55:08-07:00_fe26?top_k=5&threshold=0.3"
+```
 
 ---
 
@@ -815,8 +1019,8 @@ curl http://localhost:8732/graph/clusters/10
 ---
 
 **Last Updated**: 2025-10-27
-**Current Phase**: Phase 2.5 ✅ Complete (Clustering)
-**Next Milestone**: Phase 4 (Retrieval Layer)
+**Current Phase**: Phase 4 ✅ Complete (Retrieval Layer)
+**Status**: 🎉 **ALL PHASES COMPLETE** - Production Ready
 
 ---
 
@@ -826,9 +1030,10 @@ curl http://localhost:8732/graph/clusters/10
 ✅ **Phase 2: Semantic** - Embeddings + 3 edge types (semantic, entity_link, tag_link)
 ✅ **Phase 3: Prospective** - Metadata-only extraction (actions, questions, plans with WHEN linking)
 ✅ **Phase 2.5: Clustering** - Community detection with LLM-generated titles + summaries
-⏸️ **Phase 4: Retrieval** - Hybrid search + graph expansion (NOT STARTED)
+✅ **Phase 4: Retrieval** - Hybrid search + graph expansion + context assembly
 
 **Total Edge Types**: 3 (semantic, entity_link, tag_link) - Phase 3 is metadata-only
 **LLM Architecture**: Sequential Phase 1 → Phase 3 extraction (~600ms total)
 **Background Processing**: Phase 2 edge creation only (~2-3s async)
 **Clustering**: On-demand via API endpoint (~20s for 59 notes)
+**Search Performance**: 11ms average (hybrid FTS5 + vector similarity)

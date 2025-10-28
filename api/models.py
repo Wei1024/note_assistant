@@ -35,3 +35,54 @@ class CaptureNoteResponse(BaseModel):
     title: str
     episodic: EpisodicMetadata
     path: str
+
+
+# Phase 4: Search & Retrieval Models
+
+class SearchResultModel(BaseModel):
+    """Single search result with hybrid scoring"""
+    note_id: str
+    title: str
+    snippet: str
+    score: float
+    fts_score: float
+    vector_score: float
+    episodic: EpisodicMetadata
+    file_path: str
+    text_preview: str
+
+
+class ExpandedNodeModel(BaseModel):
+    """Graph-expanded result (contextual neighbor)"""
+    note_id: str
+    title: str
+    text_preview: str
+    relation: str  # Edge type: semantic, entity_link, tag_link
+    hop_distance: int
+    relevance_score: float
+    connected_to: List[str]  # Seed note IDs this connects to
+
+
+class ClusterSummaryModel(BaseModel):
+    """Cluster context for search results"""
+    cluster_id: int
+    title: str
+    summary: str
+    size: int
+
+
+class SearchResponse(BaseModel):
+    """Response from /search endpoint"""
+    query: str
+    primary_results: List[SearchResultModel]
+    expanded_results: List[ExpandedNodeModel]
+    cluster_summaries: List[ClusterSummaryModel]
+    total_results: int
+    execution_time_ms: int
+
+
+class SimilarityResponse(BaseModel):
+    """Response from /search/similar endpoint"""
+    query_note_id: str
+    similar_notes: List[SearchResultModel]
+    total: int

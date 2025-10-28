@@ -310,6 +310,241 @@ async def get_graph_stats():
         con.close()
 
 
+# ==============================================================================
+# Search & Retrieval Endpoints (Phase 4)
+# ==============================================================================
+
+@app.post("/search")
+async def search_notes_endpoint(
+    query: str,
+    top_k: int = 10,
+    expand_graph: bool = True,
+    max_hops: int = 1,
+    fts_weight: float = 0.4,
+    vector_weight: float = 0.6
+):
+    """Hybrid search with optional graph expansion
+
+    Combines FTS5 full-text search with vector similarity search,
+    then optionally expands via graph edges to include contextual neighbors.
+
+    Args:
+        query: Search query string
+        top_k: Number of primary results to return
+        expand_graph: Whether to expand via graph edges
+        max_hops: Maximum graph traversal depth (1-2 recommended)
+        fts_weight: Weight for FTS5 score (default 0.4)
+        vector_weight: Weight for vector similarity (default 0.6)
+
+    Returns:
+        SearchResponse with primary results, expanded results, and cluster context
+    """
+    from .services.search import hybrid_search, expand_via_graph, assemble_context
+    from .models import (
+        SearchResponse, SearchResultModel, ExpandedNodeModel,
+        ClusterSummaryModel, EpisodicMetadata
+    )
+    import time
+
+    start_time = time.time()
+
+    # Step 1: Hybrid search
+    primary_results = await hybrid_search(
+        query=query,
+        top_k=top_k,
+        fts_weight=fts_weight,
+        vector_weight=vector_weight
+    )
+
+    # Step 2: Graph expansion (optional)
+    expanded_results = []
+    if expand_graph and primary_results:
+        seed_ids = [r.note_id for r in primary_results]
+        expanded_results = expand_via_graph(
+            seed_note_ids=seed_ids,
+            max_hops=max_hops,
+            max_expanded=20
+        )
+
+    # Step 3: Assemble context (includes cluster summaries)
+    context = assemble_context(
+        primary_results=primary_results,
+        expanded_results=expanded_results,
+        max_context_tokens=2000,
+        include_cluster_summaries=True
+    )
+
+    # Convert to response models
+    primary_models = []
+    for result in primary_results:
+        primary_models.append(SearchResultModel(
+            note_id=result.note_id,
+            title=result.title,
+            snippet=result.snippet,
+            score=result.score,
+            fts_score=result.fts_score,
+            vector_score=result.vector_score,
+            episodic=EpisodicMetadata(**result.episodic),
+            file_path=result.file_path,
+            text_preview=result.text_preview
+        ))
+
+    expanded_models = []
+    for node in expanded_results:
+        expanded_models.append(ExpandedNodeModel(
+            note_id=node.note_id,
+            title=node.title,
+            text_preview=node.text_preview,
+            relation=node.relation,
+            hop_distance=node.hop_distance,
+            relevance_score=node.relevance_score,
+            connected_to=node.connected_to
+        ))
+
+    cluster_models = []
+    for cluster in context.get('cluster_summaries', []):
+        cluster_models.append(ClusterSummaryModel(**cluster))
+
+    execution_time_ms = int((time.time() - start_time) * 1000)
+
+    return SearchResponse(
+        query=query,
+        primary_results=primary_models,
+        expanded_results=expanded_models,
+        cluster_summaries=cluster_models,
+        total_results=len(primary_results) + len(expanded_results),
+        execution_time_ms=execution_time_ms
+    )
+
+
+@app.post("/search/cluster/{cluster_id}")
+async def search_within_cluster(
+    cluster_id: int,
+    query: str,
+    top_k: int = 10
+):
+    """Search within a specific cluster
+
+    Restricts hybrid search to notes in the specified cluster.
+    Useful for "search within this topic" feature in UI.
+
+    Args:
+        cluster_id: Cluster ID to search within
+        query: Search query string
+        top_k: Number of results to return
+
+    Returns:
+        SearchResponse with results limited to cluster
+    """
+    from .services.search import hybrid_search
+    from .models import SearchResponse, SearchResultModel, EpisodicMetadata
+    import time
+
+    start_time = time.time()
+
+    # Hybrid search with cluster filter
+    primary_results = await hybrid_search(
+        query=query,
+        top_k=top_k,
+        cluster_id=cluster_id
+    )
+
+    # Convert to response models
+    primary_models = []
+    for result in primary_results:
+        primary_models.append(SearchResultModel(
+            note_id=result.note_id,
+            title=result.title,
+            snippet=result.snippet,
+            score=result.score,
+            fts_score=result.fts_score,
+            vector_score=result.vector_score,
+            episodic=EpisodicMetadata(**result.episodic),
+            file_path=result.file_path,
+            text_preview=result.text_preview
+        ))
+
+    execution_time_ms = int((time.time() - start_time) * 1000)
+
+    return SearchResponse(
+        query=query,
+        primary_results=primary_models,
+        expanded_results=[],
+        cluster_summaries=[],
+        total_results=len(primary_results),
+        execution_time_ms=execution_time_ms
+    )
+
+
+@app.get("/search/similar/{note_id}")
+async def find_similar_notes_endpoint(
+    note_id: str,
+    top_k: int = 10,
+    threshold: float = 0.5
+):
+    """Find notes similar to a given note using vector similarity
+
+    Pure vector similarity search. Useful for "Find Related" feature.
+
+    Args:
+        note_id: Note ID to find similar notes for
+        top_k: Number of similar notes to return
+        threshold: Minimum cosine similarity (0.0-1.0)
+
+    Returns:
+        SimilarityResponse with similar notes
+    """
+    from .services.semantic import find_similar_notes
+    from .models import SimilarityResponse, SearchResultModel, EpisodicMetadata
+    from .db.graph import get_graph_node
+
+    # Use existing find_similar_notes from semantic.py
+    similar_notes = find_similar_notes(
+        note_id=note_id,
+        threshold=threshold,
+        limit=top_k
+    )
+
+    # Convert to SearchResultModel format
+    result_models = []
+    for note in similar_notes:
+        # Get full node data
+        node = get_graph_node(note['note_id'])
+        if not node:
+            continue
+
+        # Extract title
+        title = node.get('tags', [''])[0] if node.get('tags') else node['text'][:60]
+
+        result_models.append(SearchResultModel(
+            note_id=note['note_id'],
+            title=title,
+            snippet=note['text'][:200] + '...',
+            score=note['similarity'],
+            fts_score=0.0,  # Not applicable for vector-only search
+            vector_score=note['similarity'],
+            episodic=EpisodicMetadata(
+                who=note.get('who', []),
+                what=note.get('what', []),
+                where=[],
+                when=[],
+                tags=note.get('tags', [])
+            ),
+            file_path=node.get('file_path', ''),
+            text_preview=note['text'][:300] + '...'
+        ))
+
+    return SimilarityResponse(
+        query_note_id=note_id,
+        similar_notes=result_models,
+        total=len(result_models)
+    )
+
+
+# ==============================================================================
+# Clustering Endpoints (Phase 2.5)
+# ==============================================================================
+
 @app.post("/graph/cluster")
 async def run_clustering_endpoint(resolution: float = 1.0):
     """Run clustering on the entire graph

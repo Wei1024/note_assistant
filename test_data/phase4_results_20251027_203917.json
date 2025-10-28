@@ -1,0 +1,103 @@
+{
+  "hybrid_search": [
+    {
+      "query": "meeting with Sarah about FAISS",
+      "num_results": 2,
+      "execution_time_ms": 2080,
+      "top_score": 0.8
+    },
+    {
+      "query": "memory consolidation research",
+      "num_results": 5,
+      "execution_time_ms": 603,
+      "top_score": 0.7999999999999998
+    },
+    {
+      "query": "OAuth security implementation",
+      "num_results": 1,
+      "execution_time_ms": 330,
+      "top_score": 1.0
+    },
+    {
+      "query": "tasks for next week",
+      "num_results": 5,
+      "execution_time_ms": 326,
+      "top_score": 0.8
+    },
+    {
+      "query": "feeling anxious about project",
+      "num_results": 3,
+      "execution_time_ms": 13,
+      "top_score": 0.8
+    }
+  ],
+  "graph_expansion": {
+    "primary_count": 5,
+    "expanded_count": 3,
+    "expansion_ratio": 0.6
+  },
+  "score_fusion": [
+    {
+      "config": "Vector only",
+      "top_score": 1.0,
+      "num_results": 1
+    },
+    {
+      "config": "Default (60% vector)",
+      "top_score": 1.0,
+      "num_results": 1
+    },
+    {
+      "config": "FTS-heavy",
+      "top_score": 1.0,
+      "num_results": 1
+    },
+    {
+      "config": "FTS only",
+      "top_score": 1.0,
+      "num_results": 1
+    }
+  ],
+  "cluster_search": {
+    "cluster_id": 22,
+    "cluster_size": 5,
+    "results_found": 0
+  },
+  "similarity_search": {
+    "seed_note_id": "2025-10-24T17:55:08-07:00_fe26",
+    "similar_count": 1,
+    "top_similarity": 0.35776787996292114
+  },
+  "context_assembly": {
+    "primary_count": 3,
+    "expanded_count": 4,
+    "cluster_count": 2
+  },
+  "benchmark": [
+    {
+      "query": "memory consolidation",
+      "time_ms": 15,
+      "results": 6
+    },
+    {
+      "query": "FAISS implementation",
+      "time_ms": 9,
+      "results": 0
+    },
+    {
+      "query": "meeting Sarah",
+      "time_ms": 10,
+      "results": 1
+    },
+    {
+      "query": "security OAuth",
+      "time_ms": 11,
+      "results": 1
+    },
+    {
+      "query": "research findings",
+      "time_ms": 10,
+      "results": 1
+    }
+  ]
+}
