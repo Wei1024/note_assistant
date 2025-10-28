@@ -41,7 +41,92 @@ export interface CaptureNoteResponse {
 }
 
 /**
- * Search result hit
+ * Search result hit (Phase 4 - GraphRAG hybrid search)
+ */
+export interface SearchResultModel {
+  note_id: string
+  title: string
+  snippet: string        // Query-highlighted excerpt
+  score: number          // Fused score (0-1)
+  fts_score: number      // FTS5 component score
+  vector_score: number   // Vector similarity score
+  episodic: EpisodicMetadata
+  file_path: string
+  text_preview: string
+}
+
+/**
+ * Expanded graph node from search (Phase 4)
+ */
+export interface ExpandedNodeModel {
+  note_id: string
+  title: string
+  text_preview: string
+  relation: 'semantic' | 'entity_link' | 'tag_link'  // Edge type
+  hop_distance: number
+  relevance_score: number
+  connected_to: string[]  // Seed note IDs
+}
+
+/**
+ * Cluster summary for search context (Phase 4)
+ */
+export interface ClusterSummaryModel {
+  cluster_id: number
+  title: string
+  summary: string
+  size: number
+}
+
+/**
+ * Search response from /search endpoint (Phase 4)
+ */
+export interface SearchResponse {
+  query: string
+  primary_results: SearchResultModel[]
+  expanded_results: ExpandedNodeModel[]
+  cluster_summaries: ClusterSummaryModel[]
+  total_results: number
+  execution_time_ms: number
+}
+
+/**
+ * Similarity search response from /search/similar/{note_id}
+ */
+export interface SimilarityResponse {
+  query_note_id: string
+  similar_notes: SearchResultModel[]
+  total: number
+}
+
+/**
+ * Synthesis response from /synthesize endpoint (Phase 4+)
+ */
+export interface SynthesisResponse {
+  query: string
+  summary: string
+  notes_analyzed: number
+  search_results: SearchResultModel[]
+  expanded_results: ExpandedNodeModel[]
+  cluster_summaries: ClusterSummaryModel[]
+}
+
+/**
+ * Streaming synthesis event types (Phase 4+ SSE)
+ */
+export type SynthesisStreamEvent =
+  | { type: 'metadata'; query: string; notes_analyzed: number; has_clusters: boolean; has_expanded: boolean }
+  | { type: 'chunk'; content: string }
+  | { type: 'results'; search_results: SearchResultModel[]; expanded_results: ExpandedNodeModel[]; cluster_summaries: ClusterSummaryModel[] }
+  | { type: 'done' }
+
+// ========================================
+// Legacy Types (kept for backward compatibility)
+// ========================================
+
+/**
+ * Search result hit (legacy)
+ * @deprecated Use SearchResultModel instead
  */
 export interface SearchHit {
   path: string
@@ -52,25 +137,6 @@ export interface SearchHit {
     dimensions: Dimensions
   }
 }
-
-/**
- * Synthesis response from /synthesize endpoint
- */
-export interface SynthesisResponse {
-  query: string
-  summary: string
-  notes_analyzed: number
-  search_results: SearchHit[]
-}
-
-/**
- * Streaming synthesis event types
- */
-export type SynthesisStreamEvent =
-  | { type: 'metadata'; query: string; notes_analyzed: number }
-  | { type: 'chunk'; content: string }
-  | { type: 'results'; search_results: SearchHit[] }
-  | { type: 'done' }
 
 /**
  * Episodic metadata for GraphRAG nodes

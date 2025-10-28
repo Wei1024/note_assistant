@@ -542,6 +542,87 @@ async def find_similar_notes_endpoint(
 
 
 # ==============================================================================
+# Synthesis Endpoints (Phase 4+: LLM-powered search summarization)
+# ==============================================================================
+
+@app.post("/synthesize")
+async def synthesize_endpoint(
+    query: str,
+    limit: int = 10,
+    expand_graph: bool = True,
+    max_hops: int = 1
+):
+    """Synthesize search results into coherent summary using LLM
+
+    Executes hybrid search + graph expansion, then uses LLM to generate
+    a coherent answer to the user's query based on found notes.
+
+    Args:
+        query: Natural language query
+        limit: Maximum number of notes to analyze
+        expand_graph: Whether to include graph neighbors in context
+        max_hops: Graph traversal depth (1-2)
+
+    Returns:
+        SynthesisResponse with summary, search results, and metadata
+    """
+    from .services.synthesis import synthesize_search_results
+
+    result = await synthesize_search_results(
+        query=query,
+        limit=limit,
+        expand_graph=expand_graph,
+        max_hops=max_hops
+    )
+
+    return result
+
+
+@app.get("/synthesize/stream")
+async def synthesize_stream_endpoint(
+    query: str,
+    limit: int = 10,
+    expand_graph: bool = True,
+    max_hops: int = 1
+):
+    """Stream synthesis results in real-time using Server-Sent Events
+
+    Same as /synthesize but streams LLM response chunks as they're generated.
+    Better UX for long synthesis responses.
+
+    Args:
+        query: Natural language query
+        limit: Maximum number of notes
+        expand_graph: Include graph neighbors
+        max_hops: Graph traversal depth
+
+    Returns:
+        SSE stream with events:
+        - metadata: {type, query, notes_analyzed, has_clusters, has_expanded}
+        - chunk: {type, content} - Incremental synthesis text
+        - results: {type, search_results, expanded_results, cluster_summaries}
+        - done: {type} - Completion signal
+    """
+    from fastapi.responses import StreamingResponse
+    from .services.synthesis import synthesize_search_results_stream
+
+    return StreamingResponse(
+        synthesize_search_results_stream(
+            query=query,
+            limit=limit,
+            expand_graph=expand_graph,
+            max_hops=max_hops
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
+
+
+# ==============================================================================
 # Clustering Endpoints (Phase 2.5)
 # ==============================================================================
 
